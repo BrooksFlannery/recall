@@ -1,0 +1,27 @@
+{
+  "name": "recall",
+  "version": "1.0.0",
+  "description": "A recall application",
+  "main": "index.js",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "scripts": {
+    "lint": "eslint . --ext .ts,.tsx,.js,.jsx",
+    "lint:fix": "eslint . --ext .ts,.tsx,.js,.jsx --fix",
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "eslint": "^8.57.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-prettier": "^5.1.3",
+    "eslint-plugin-unused-imports": "^3.0.0",
+    "eslint-import-resolver-typescript": "^3.6.1",
+    "prettier": "^3.2.5",
+    "typescript": "^5.3.3"
+  }
+}
