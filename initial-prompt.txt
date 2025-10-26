@@ -1,0 +1,27 @@
+@spec.md Lets work in this to create a spec for a new webapp
+
+tech: nextjs, trpc, drizzle, betterauth, zod, shadcn, vercel openai api
+
+docs: @https://ai-sdk.dev/providers/ai-sdk-providers/openai 
+
+behavior: 
+
+1. users can sign in and sign up 
+2. users can create "notes" which are owned
+3. users can create "notebooks" which store notes
+4. users can test their knowledge by starting a quiz
+5. our philsophical view on quizes is as follows.
+
+there are 3 main components to learning things in a way that sticks: recall, interleaving, and elaboration. essentially you want to have a sort of exponential falloff to the frequency of which a user is tested on a particular note, IF they are getting it correct. interleaving means mixing different categories up. if i have 7 different categories we should try to keep an even-ish distribution of notes when being quized. This is complicated by the fact that category sizes can be wildly differnt counts, notes can be uncategorized, notes can belong to many categories. elaboration meaning that asking someone to pick from a multiple choice options is less helpful than short answer which is less helpful than long form answer. which is less helpful than multi stage deep reasoning answers. We can build up to the later latter, but im imagining a system that tries to ask why questions and makes a user string together more knowledge rather than one and done answers.
+
+6. db stuff (is it standard to have singular or plural table names???, also i am inconsistent in pascalCase and snake_case for my tables can you clarify which is idiomatic)
+
+all the standard better auth tables:
+
+user table: id, 
+notes table: id, text, createdAt, updatedAt, userId, category [can be in multiple or no category]
+answers table: id, correct, confidence, difficulty, createdAt, userId, note_id, quiz_id
+notebooks table: id, userid, categories, createdAt, updatedAt,
+quizes table: id, userId, notebook_id, createdAt, score, analysis,  
+
+7. site layout stuff. sign in page, sign up page, home page that has table of notebooks, notebook page, quiz page, quizes page
