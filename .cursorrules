@@ -1,0 +1,35 @@
+# Cursor Rules for Recall Project
+
+## Code Style & Formatting
+- Use TypeScript for all new code
+- Follow ESLint and Prettier configurations
+- Use meaningful variable and function names
+- Add JSDoc comments for APIs
+
+## UI
+- Mobile first web design
+- Always reach for a shadcn component when available
+- Keep everything as simple and vanilla shadncn as possible.
+
+## Project Structure
+- Keep components in `/components` directory
+- Store utilities in `/utils` directory
+- Place types/interfaces in `/types` directory
+- Use index files for clean imports
+
+## Best Practices
+- Prefer functional components over class components
+- Use React hooks for state management
+- Implement proper error handling
+- Write unit tests for new features
+
+## Dependencies
+- Prefer established, well-maintained packages
+- Keep dependencies up to date
+- Document any new dependencies in README
+
+## Performance
+- Optimize for mobile performance
+- Use lazy loading where appropriate
+- Minimize bundle size
+- Implement proper caching strategies
