@@ -153,10 +153,10 @@ Chosen route model (nested under notebook)
 5. Phases & Tasks
 
 ### Phase 1: Project Scaffolding
-- [ ] Initialize Next.js (App Router) with TypeScript
-- [ ] Configure tRPC server and client helpers
-- [ ] Add Zod and base lint/format configs
-- [ ] Install shadcn/ui and set up theme
+- [x] Initialize Next.js (App Router) with TypeScript
+- [x] Configure tRPC server and client helpers
+- [x] Add Zod and base lint/format configs
+- [x] Install shadcn/ui and set up theme
 - [ ] Set up Drizzle with Postgres connection
 - [ ] Add BetterAuth base configuration
 - [ ] Add AI SDK and OpenAI provider wiring

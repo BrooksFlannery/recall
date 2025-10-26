@@ -8,6 +8,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
     'plugin:import/recommended',
     'plugin:import/typescript',
+    'next/core-web-vitals',
     'prettier'
   ],
   parserOptions: {
@@ -49,6 +50,8 @@ module.exports = {
     '@typescript-eslint/await-thenable': 'error',
     '@typescript-eslint/no-misused-promises': 'error',
     '@typescript-eslint/require-await': 'error',
+    '@typescript-eslint/no-unchecked-indexed-access': 'error',
+    '@typescript-eslint/no-unnecessary-condition': 'error',
 
     // Prevent common mistakes
     '@typescript-eslint/no-unused-vars': [
