@@ -172,14 +172,14 @@ Chosen route model (nested under notebook)
 - [x] Add sign out
 
 ### Phase 3: Database Schema & Migrations
-- [ ] Define naming conventions (plural snake_case tables; snake_case columns)
-- [ ] Create tables: users (BetterAuth), notes, notebooks, answers, quizzes
-- [ ] Create tables: categories, note_categories (many-to-many)
-- [ ] Create table: notebook_notes (many-to-many)
-- [ ] Add indexes and FKs (user ownership, created_at ordering)
-- [ ] Generate and run Drizzle migrations
-- [ ] Seed script for local dev data
-- [ ] Add ERD export to docs
+- [x] Define naming conventions (plural snake_case tables; snake_case columns)
+- [x] Create tables: users (BetterAuth), notes, notebooks, answers, quizzes
+- [x] Create tables: categories, note_categories (many-to-many)
+- [x] ~~Create table: notebook_notes (many-to-many)~~ (Not needed - notes have notebook_id FK, one-to-many relationship)
+- [x] Add indexes and FKs (user ownership, created_at ordering)
+- [x] Generate and run Drizzle migrations
+- [x] Seed script for local dev data
+- [x] Add ERD export to docs
 
 ### Phase 4: Notes & Notebooks CRUD
 - [ ] Implement `notebooksRouter` CRUD and pagination
@@ -275,7 +275,7 @@ Appendix A: Database Conventions and Initial Schema (Drizzle)
   - categories: `id`, `user_id`, `notebook_id`, `name`, `created_at`, `updated_at`
   - note_categories (M2M): `note_id`, `category_id`, (PK: composite) // category and note must share notebook
   - quizzes: `id`, `user_id`, `notebook_id`, `created_at`, `finished_at? timestamptz`, `score? numeric`, `analysis? jsonb`
-  - questions: `id`, `note_id`, `user_id`, `question_text`, `difficulty numeric` /* 0-1 */, `last_asked_at? timestamptz`, `created_at`, `updated_at`
+  - questions: `id`, `note_id`, `question_text`, `difficulty numeric` /* 0-1 */, `last_asked_at? timestamptz`, `created_at`, `updated_at`
   - answers: `id`, `quiz_id`, `note_id`, `question_id`, `user_id`, `correct boolean`, `confidence numeric?` /* 0-1 */, `difficulty numeric?` /* 0-1 */, `created_at`
 
 - Indices
@@ -348,7 +348,6 @@ create table quizzes (
 create table questions (
   id uuid primary key default gen_random_uuid(),
   note_id uuid not null references notes(id) on delete cascade,
-  user_id uuid not null references users(id) on delete cascade,
   question_text text not null,
   difficulty numeric,
   last_asked_at timestamptz,
