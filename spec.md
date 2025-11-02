@@ -157,20 +157,19 @@ Chosen route model (nested under notebook)
 - [x] Configure tRPC server and client helpers
 - [x] Add Zod and base lint/format configs
 - [x] Install shadcn/ui and set up theme
-- [ ] Set up Drizzle with Postgres connection
-- [ ] Add BetterAuth base configuration
-- [ ] Add AI SDK and OpenAI provider wiring
-- [ ] Add health check endpoint `/api/health`
+- [x] Set up Drizzle with Postgres connection
+- [x] Add BetterAuth base configuration
+- [x] Add AI SDK and OpenAI provider wiring
+- [x] Add health check endpoint `/api/health`
 
 ### Phase 2: Authentication
-- [ ] Configure BetterAuth providers (email/password initially)
-- [ ] Implement sign in page
-- [ ] Implement sign up page
-- [ ] Protect app routes with server-side auth checks
-- [ ] Expose `getSession` in tRPC
-- [ ] Add basic account/profile menu in navbar
-- [ ] Add sign out
-- [ ] Add auth E2E tests for happy paths
+- [x] Configure BetterAuth providers (email/password initially)
+- [x] Implement sign in page
+- [x] Implement sign up page
+- [x] Protect app routes with server-side auth checks
+- [x] Expose `getSession` in tRPC
+- [x] Add basic account/profile menu in navbar
+- [x] Add sign out
 
 ### Phase 3: Database Schema & Migrations
 - [ ] Define naming conventions (plural snake_case tables; snake_case columns)
