@@ -1,10 +1,9 @@
-import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth';
 import { HomeClient } from './home-client';
 
 export default async function Home() {
+  // Session check is handled by middleware, but we can still access it if needed
   const session = await auth.api.getSession({ headers: await headers() });
-  if (!session?.user) redirect('/sign-in');
   return <HomeClient />;
 }

@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1761521394733,
-      "tag": "0000_familiar_carnage",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1762051629333,
-      "tag": "0001_free_stellaris",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1762054672494,
-      "tag": "0002_premium_the_renegades",
+      "when": 1762060352104,
+      "tag": "0000_talented_network",
       "breakpoints": true
     }
   ]
