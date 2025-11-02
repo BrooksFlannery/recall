@@ -1,6 +1,15 @@
 # Recall Data Model
 
-This document provides a comprehensive overview of the Recall application's database schema and relationships.
+This document provides a comprehensive overview of the Recall application's database schema and relationships. The database uses Drizzle ORM with PostgreSQL.
+
+## Naming Conventions
+
+- **Table names**: Plural snake_case (e.g., `notes`, `notebooks`, `note_categories`)
+- **Column names**: snake_case (e.g., `created_at`, `user_id`)
+- **Primary keys**: `id` as `uuid` default `gen_random_uuid()` (except `users.id` which is `text` managed by BetterAuth)
+- **Timestamps**: `created_at` and `updated_at` (`timestamptz`), server-updated
+- **Foreign keys**: `*_id` columns with `ON DELETE CASCADE` where owned
+- **Ownership**: `user_id` on user-owned rows; row-level access enforced in app layer
 
 ## Entity Relationship Diagram
 
@@ -27,7 +36,7 @@ erDiagram
     questions ||--o{ answers : "answered in"
     
     users {
-        uuid id PK
+        text id PK
         text email UK
         boolean email_verified
         text name
@@ -156,7 +165,7 @@ flowchart TD
 ## Field Descriptions
 
 ### users
-- **id** (UUID, PK): Unique identifier, managed by BetterAuth
+- **id** (TEXT, PK): Unique identifier, managed by BetterAuth (uses text IDs)
 - **email** (TEXT, UNIQUE): User's email address
 - **email_verified** (BOOLEAN): Email verification status
 - **name** (TEXT): User's display name (optional)
@@ -196,6 +205,7 @@ flowchart TD
 ### questions
 - **id** (UUID, PK): Unique identifier
 - **note_id** (UUID, FK): Source note (ownership derived via note.user_id)
+- Note: Questions inherit ownership through their parent note, so no direct `user_id` column is needed
 - **question_text** (TEXT): The question text
 - **difficulty** (NUMERIC 0-1): Question difficulty rating
 - **last_asked_at** (TIMESTAMPTZ): Last time this question was asked (optional)
@@ -238,10 +248,22 @@ All foreign keys use `ON DELETE CASCADE`:
 - Deleting a question removes associated answers
 
 ### Indexes
-- All `user_id` columns indexed with `created_at desc` for fast user-scoped queries
-- All `notebook_id` columns indexed for fast notebook-scoped queries
-- Foreign key columns indexed for fast joins
-- Composite indexes for common query patterns (e.g., notebook + finished_at for active quizzes)
+
+Performance indexes for common query patterns:
+
+- `notes(user_id, created_at desc)` - Fast user note listing
+- `notes(notebook_id, created_at desc)` - Fast notebook note listing
+- `notebooks(user_id, created_at desc)` - Fast user notebook listing
+- `categories(notebook_id)` - Fast category lookup by notebook
+- `categories(notebook_id, lower(name))` - Unique category name per notebook
+- `quizzes(user_id, created_at desc)` - Fast user quiz listing
+- `quizzes(notebook_id, created_at desc)` - Fast notebook quiz listing
+- `quizzes(notebook_id, finished_at nulls first, created_at desc)` - Active quiz lookup
+- `answers(quiz_id)` - Fast answer lookup by quiz
+- `answers(user_id, created_at desc)` - Fast user answer history
+- `answers(question_id, created_at desc)` - Fast question answer history
+- `note_categories(category_id)` - Fast note lookup by category
+- `note_categories(note_id)` - Fast category lookup by note
 
 ## Common Query Patterns
 
@@ -251,4 +273,12 @@ All foreign keys use `ON DELETE CASCADE`:
 4. **Get active quiz**: `quizzes WHERE notebook_id = ? AND finished_at IS NULL`
 5. **Get quiz answers**: `answers WHERE quiz_id = ?`
 6. **Get question history**: `answers WHERE question_id = ? ORDER BY created_at DESC`
+
+## Export Instructions
+
+To export an ERD diagram from the database:
+
+1. Use Drizzle Studio: `pnpm db:studio`
+2. Use a database visualization tool like pgAdmin or TablePlus
+3. Use a schema visualization tool like dbdiagram.io or draw.io with the Mermaid diagram above
 

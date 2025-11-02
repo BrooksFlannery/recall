@@ -181,6 +181,8 @@ Chosen route model (nested under notebook)
 - [x] Seed script for local dev data
 - [x] Add ERD export to docs
 
+### Phase 3.5: Implement Flowglad Payments
+
 ### Phase 4: Notes & Notebooks CRUD
 - [ ] Implement `notebooksRouter` CRUD and pagination
 - [ ] Implement `notesRouter` CRUD with category assignment
@@ -202,7 +204,7 @@ Chosen route model (nested under notebook)
 - [ ] Capture open questions for quiz logic iteration
 
 ### Phase 6: UI Polish & UX
-- [ ] Global layout, navbar, breadcrumb
+- [ ] Global layout, breadcrumb
 - [ ] Table components (shadcn DataTable) for notebooks/quizzes
 - [ ] Forms with zod + react-hook-form
 - [ ] Empty states, loading, error boundaries

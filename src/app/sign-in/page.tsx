@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/button';
 
@@ -51,6 +52,16 @@ export default function SignInPage() {
         <Button type="submit" disabled={loading} className="w-full">
           {loading ? 'Signing in…' : 'Sign in'}
         </Button>
+        <p className="text-center text-sm">
+          Click{' '}
+          <Link
+            href="/sign-up"
+            className="text-blue-600 underline hover:text-blue-800"
+          >
+            here
+          </Link>{' '}
+          to sign up
+        </p>
       </form>
     </div>
   );

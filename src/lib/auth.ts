@@ -1,6 +1,8 @@
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { nextCookies } from 'better-auth/next-js';
 import { db } from '@/server/db/client';
+import { betterAuthSchema } from '@/server/db/schema';
 
 export const auth = betterAuth({
   // Providers & cookies integration
@@ -9,12 +11,14 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
   },
-  // Database via Drizzle adapter
-  // The adapter will automatically detect the users table schema with UUID from our Drizzle schema
-  database: drizzleAdapter(db as unknown as Record<string, any>, {
+  // Database via Drizzle adapter with explicit schema mapping
+  database: drizzleAdapter(db, {
     provider: 'pg',
     usePlural: true,
+    schema: betterAuthSchema,
   }),
+  // @ts-expect-error - better-auth plugin type incompatibility with exactOptionalPropertyTypes
+  plugins: [nextCookies()],
 });
 
 

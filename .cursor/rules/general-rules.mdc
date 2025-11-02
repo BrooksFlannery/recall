@@ -1,0 +1,28 @@
+---
+alwaysApply: true
+---
+
+## Code Style & Formatting
+- Use TypeScript for all new code
+- No usage of 'any' type
+- Resist usage of casting when possible
+- Use meaningful variable and function names with a preference for explicit longer names if necessary
+- Add JSDoc comments for all APIs and important functions
+- Prefer functional components when possible
+- Write Unit tests for all important functions
+
+## UI
+- Mobile first web design
+- Always reach for a shadcn component when available
+- Keep everything as simple and vanilla shadncn as possible.
+
+## Project Structure
+- Keep components in `/components` directory
+- Store utilities in `/utils` directory
+- Place types/interfaces in `/types` directory
+- Place documentation md files in `/docs` directory
+- Place scratch md files in root directory
+- Use index files for clean imports
+
+## Final Notes
+- Above all else, keep it simple
