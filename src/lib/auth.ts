@@ -10,6 +10,7 @@ export const auth = betterAuth({
     requireEmailVerification: false,
   },
   // Database via Drizzle adapter
+  // The adapter will automatically detect the users table schema with UUID from our Drizzle schema
   database: drizzleAdapter(db as unknown as Record<string, any>, {
     provider: 'pg',
     usePlural: true,
