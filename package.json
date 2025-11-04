@@ -22,6 +22,8 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^2.0.53",
+    "@flowglad/nextjs": "^0.11.0",
+    "@flowglad/react": "^0.11.0",
     "@radix-ui/react-slot": "^1.2.3",
     "@tanstack/react-query": "^5.90.5",
     "@trpc/client": "^11.7.0",

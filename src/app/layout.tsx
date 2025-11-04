@@ -3,6 +3,11 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TRPCReactProvider } from "@/components/providers";
 import { Navbar } from "@/components/navbar";
+import { FlowgladProvider } from '@flowglad/react';
+import { PropsWithChildren } from "react";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,19 +24,21 @@ export const metadata: Metadata = {
   description: "A recall application for learning through spaced recall",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: PropsWithChildren) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  const user = session?.user;
   return (
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <TRPCReactProvider>
-          <Navbar />
-          {children}
+          <FlowgladProvider loadBilling={!!user}>
+            <Navbar />
+            {children}
+          </FlowgladProvider>
         </TRPCReactProvider>
       </body>
     </html>
