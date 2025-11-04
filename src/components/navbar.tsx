@@ -23,7 +23,12 @@ export function Navbar() {
   }
 
   return (
-    <nav className="flex justify-end p-4">
+    <nav className="flex justify-end items-center gap-4 p-4">
+      {session.user.name && (
+        <span className="text-sm text-muted-foreground">
+          {session.user.name}
+        </span>
+      )}
       <Button onClick={handleSignOut} variant="outline" size="sm">
         Sign out
       </Button>

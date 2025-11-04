@@ -20,5 +20,3 @@ export const auth = betterAuth({
   // @ts-expect-error - better-auth plugin type incompatibility with exactOptionalPropertyTypes
   plugins: [nextCookies()],
 });
-
-

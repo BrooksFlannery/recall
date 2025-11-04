@@ -17,23 +17,6 @@ export function HomeClient() {
           <p className="text-lg leading-8 text-muted-foreground">
             A recall application for learning through spaced recall
           </p>
-          <div className="mt-8 space-y-4">
-            <div className="rounded-lg bg-card p-4 border">
-              <h2 className="text-lg font-medium mb-2 text-card-foreground">tRPC Test</h2>
-              <p className="text-sm text-muted-foreground">
-                {hello.data?.greeting ?? 'Loading...'}
-              </p>
-            </div>
-            <div className="rounded-lg bg-card p-4 border">
-              <h2 className="text-lg font-medium mb-2 text-card-foreground">API Status</h2>
-              <p className="text-sm text-muted-foreground">
-                {getAll.data?.message ?? 'Loading...'}
-              </p>
-            </div>
-            <div className="mt-6">
-              <Button>Test shadcn/ui Button</Button>
-            </div>
-          </div>
         </div>
       </main>
     </div>
