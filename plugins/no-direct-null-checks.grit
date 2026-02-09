@@ -1,0 +1,17 @@
+engine biome(2.0)
+language js
+
+or {
+  `if ($x === null)` as $check where {
+    register_diagnostic(span=$check, message="Direct null checks are discouraged. Use Option/Either patterns instead. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.", severity="error")
+  },
+  `if ($x == null)` as $check where {
+    register_diagnostic(span=$check, message="Direct null checks are discouraged. Use Option/Either patterns instead. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.", severity="error")
+  },
+  `if ($x !== null)` as $check where {
+    register_diagnostic(span=$check, message="Direct null checks are discouraged. Use Option/Either patterns instead. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.", severity="error")
+  },
+  `if ($x != null)` as $check where {
+    register_diagnostic(span=$check, message="Direct null checks are discouraged. Use Option/Either patterns instead. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.", severity="error")
+  }
+}

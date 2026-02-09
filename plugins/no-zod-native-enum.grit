@@ -1,0 +1,6 @@
+engine biome(2.0)
+language js
+
+`z.nativeEnum($args)` as $call where {
+  register_diagnostic(span=$call, message="z.nativeEnum() is deprecated in Zod 4. Use z.enum() instead.", severity="error")
+}

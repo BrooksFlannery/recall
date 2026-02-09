@@ -1,0 +1,21 @@
+engine biome(2.0)
+language js
+
+// Detect Option/Either values accessed directly without handling
+// This is a partial implementation - we'll catch obvious cases and improve over time
+// Exception: Internal implementations in lib/utils/fp.ts and lib/utils/fp-examples.ts
+// are allowed to access .value/.right/.left when guarded by isSome/isRight/isLeft
+or {
+  // Match direct .value access on Option (should use match/getOrElse)
+  `$option.value` as $access where {
+    register_diagnostic(span=$access, message="Option values should be handled with match() or getOrElse(), not accessed directly via .value. Exception: Internal implementations in lib/utils/fp.ts may access .value when guarded by isSome(). If truly exceptional elsewhere, use biome-ignore and document the exception.", severity="error")
+  },
+  // Match direct property access on Either (should use matchEither)
+  // Note: This is simplified - may need refinement based on Either implementation
+  `$either.left` as $access where {
+    register_diagnostic(span=$access, message="Either values should be handled with matchEither(), not accessed directly. Exception: Internal implementations in lib/utils/fp.ts may access .left when guarded by isLeft(). If truly exceptional elsewhere, use biome-ignore and document the exception.", severity="error")
+  },
+  `$either.right` as $access where {
+    register_diagnostic(span=$access, message="Either values should be handled with matchEither(), not accessed directly. Exception: Internal implementations in lib/utils/fp.ts may access .right when guarded by isRight(). If truly exceptional elsewhere, use biome-ignore and document the exception.", severity="error")
+  }
+}

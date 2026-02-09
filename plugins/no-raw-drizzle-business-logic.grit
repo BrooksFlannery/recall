@@ -1,0 +1,25 @@
+// HIBERNATION NOTE: This rule is ready but not active.
+// Enable this rule once database access patterns emerge in the codebase
+// and we want to enforce an abstraction layer (e.g., tableMethods).
+// Update the file paths in the biome.json override to match actual patterns.
+//
+// engine biome(2.0)
+// language js
+//
+// or {
+//   `db.query.$_.$method($args)` as $call where {
+//     register_diagnostic(span=$call, message="Raw Drizzle queries are not allowed in business logic. Use tableMethods instead.", severity="error")
+//   },
+//   `db.insert($args)` as $call where {
+//     register_diagnostic(span=$call, message="Raw Drizzle inserts are not allowed in business logic. Use tableMethods instead.", severity="error")
+//   },
+//   `db.update($args)` as $call where {
+//     register_diagnostic(span=$call, message="Raw Drizzle updates are not allowed in business logic. Use tableMethods instead.", severity="error")
+//   },
+//   `db.delete($args)` as $call where {
+//     register_diagnostic(span=$call, message="Raw Drizzle deletes are not allowed in business logic. Use tableMethods instead.", severity="error")
+//   },
+//   `db.select($args)` as $call where {
+//     register_diagnostic(span=$call, message="Raw Drizzle selects are not allowed in business logic. Use tableMethods instead.", severity="error")
+//   }
+// }

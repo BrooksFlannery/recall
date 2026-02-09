@@ -1,0 +1,17 @@
+engine biome(2.0)
+language js
+
+or {
+  `$x.toBeDefined()` as $call where {
+    register_diagnostic(span=$call, message="Avoid toBeDefined() - use more precise assertions like toEqual(), toBe(), or toMatchObject() that verify the actual expected value.", severity="error")
+  },
+  `$x.toBeTruthy()` as $call where {
+    register_diagnostic(span=$call, message="Avoid toBeTruthy() - use more precise assertions like toBe(true), toEqual(), or explicit value checks that verify the actual expected value.", severity="error")
+  },
+  `$x.not.toBeNull()` as $call where {
+    register_diagnostic(span=$call, message="Avoid not.toBeNull() - use more precise assertions like toEqual(), toBe(), or toMatchObject() that verify the actual expected value.", severity="error")
+  },
+  `$x.not.toBeUndefined()` as $call where {
+    register_diagnostic(span=$call, message="Avoid not.toBeUndefined() - use more precise assertions like toEqual(), toBe(), or toMatchObject() that verify the actual expected value.", severity="error")
+  }
+}

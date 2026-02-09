@@ -1,0 +1,2 @@
+[runtime]
+preload = ["./scripts/db-safety-preload.ts"]

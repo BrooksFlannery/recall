@@ -1,0 +1,52 @@
+engine biome(2.0)
+language js
+
+// Match IIFE patterns: (function() { ... })() or (() => { ... })()
+or {
+  // Regular function IIFE: (function() { ... })() or (function(params) { ... })()
+  `(function() { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  },
+  `(function($params) { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  },
+  // Arrow function IIFE: (() => { ... })()
+  `(() => { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  },
+  // Async function IIFE: (async function() { ... })() or (async function(params) { ... })()
+  `(async function() { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named async function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  },
+  `(async function($params) { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named async function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  },
+  // Async arrow function IIFE: (async () => { ... })()
+  `(async () => { $body })()` as $iife where {
+    register_diagnostic(
+      span=$iife,
+      message="IIFEs (Immediately Invoked Function Expressions) are not allowed. Prefer top-level function calls or module-level execution instead. Extract the function body to a named async function and call it at the module level. If truly exceptional, use @ts-expect-error and update this error message to explicitly state the type of situation that makes breaking this rule acceptable.",
+      severity="error"
+    )
+  }
+}

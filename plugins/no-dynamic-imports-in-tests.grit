@@ -1,0 +1,6 @@
+engine biome(2.0)
+language js
+
+JsImportCallExpression() as $import where {
+  register_diagnostic(span=$import, message="Dynamic imports are not allowed in test files. Import modules statically at the top of the file instead.", severity="error")
+}

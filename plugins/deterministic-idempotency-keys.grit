@@ -1,0 +1,25 @@
+// HIBERNATION NOTE: This rule is ready but not active.
+// Enable this rule once idempotency key functions are identified in the codebase.
+// Update the function name pattern (e.g., createTriggerIdempotencyKey, createIdempotencyKey)
+// to match the actual naming convention used in this project.
+//
+// engine biome(2.0)
+// language js
+//
+// or {
+//   // Match Date.now() anywhere in an idempotency key function call
+//   `$idempotencyKeyFn($arg)` as $call where {
+//     $arg <: contains `Date.now()`,
+//     register_diagnostic(span=$call, message="Idempotency keys must be deterministic. Date.now() makes keys non-deterministic. Use resource IDs instead.", severity="error")
+//   },
+//   // Match new Date() anywhere in an idempotency key function call
+//   `$idempotencyKeyFn($arg)` as $call where {
+//     $arg <: contains `new Date()`,
+//     register_diagnostic(span=$call, message="Idempotency keys must be deterministic. new Date() makes keys non-deterministic. Use resource IDs instead.", severity="error")
+//   },
+//   // Match Math.random() anywhere in an idempotency key function call
+//   `$idempotencyKeyFn($arg)` as $call where {
+//     $arg <: contains `Math.random()`,
+//     register_diagnostic(span=$call, message="Idempotency keys must be deterministic. Math.random() makes keys non-deterministic. Use resource IDs instead.", severity="error")
+//   }
+// }

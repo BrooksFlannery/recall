@@ -1,0 +1,7 @@
+engine biome(2.0)
+language js
+
+// Match explicit any type annotations
+`$name: any` as $type where {
+  register_diagnostic(span=$type, message="Explicit 'any' type is not allowed in test files. Use specific types, 'unknown', or proper type inference. If truly exceptional, use @ts-expect-error and update this error message to document the exception case.", severity="error")
+}
