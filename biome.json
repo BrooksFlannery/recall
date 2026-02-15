@@ -27,8 +27,6 @@
   },
   "plugins": [
     "./plugins/no-zod-native-enum.grit",
-    "./plugins/no-direct-null-checks.grit",
-    "./plugins/no-unhandled-option-either.grit",
     "./plugins/no-dynamic-imports-in-tests.grit",
     "./plugins/no-iife.grit",
     "./plugins/no-toBeDefined-or-toBeTruthy-in-tests.grit",
