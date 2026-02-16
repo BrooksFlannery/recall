@@ -259,14 +259,5 @@ LLM is **not** used as source of truth. The user's text (user_content) is the so
 
 ---
 
-## 10. Future Ideas (Out of Scope for v1)
-
-* Scheduled quiz mode (due-today view, SRS updates) — in v1 but implemented in a later gameplan.
-* Filtering/sorting the fact list
-* Difficulty-aware scheduling
-* Notifications
-* Export/import
-
----
 
 **End of v1 Spec**
