@@ -23,7 +23,7 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 
 ### Patch Ordering Strategy
 
-**Early**: Add Effect dependency; define AI service interface and Tag; add Zod–Effect bridge; test stubs.  
+**Early**: Add Effect dependency; define AI service interface and Tag; add Zod–Effect bridge; optional mock Layer for tests.  
 **Middle**: Implement OpenAI AI service; add Layer.  
 **Late**: Migrate/remove `fp.ts`, `zod.ts`, `fp-examples.ts`; update any call sites to use Effect and the AI service.
 
@@ -41,10 +41,10 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 ### 1. Effect and AI service types
 
 - Add `effect` (and optionally `@effect/schema` only if we add a minimal bridge; spec says Zod stays for v1).
-- Create an AI service module (e.g. `lib/ai/types.ts` or `server/ai/types.ts`):
+- Create an AI service module in `lib/ai/types.ts`:
   - Tag: `AIService`
   - Interface: `generateQuestionAnswer(userContent: string) => Effect<{ question: string, canonicalAnswer: string }, AIGenerationError>`, `gradeAnswer(params: { userAnswer: string, canonicalAnswer: string }) => Effect<GradeResult, GradingError>`.
-  - Types: `AIGenerationError`, `GradingError`, `GradeResult` (grade enum, confidence, rationale).
+  - Types: `AIGenerationError` and `GradingError` as `{ _tag; message: string; code?: string }`; `GradeResult` as `{ grade: "correct" | "partial" | "incorrect"; confidence: number; rationale: string }` (confidence 0–1).
 
 ### 2. Zod–Effect bridge (minimal)
 
@@ -62,7 +62,8 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 ### 5. Verification
 
 - No remaining imports from `./fp` or `lib/utils/fp`.
-- AI service can be run with OpenAI Layer in app; tests can use a mock Layer.
+- AI service can be run with OpenAI Layer in app; tests use a mock Layer for any code that depends on AIService.
+- **Testing scope**: Only deterministic local functions are unit-tested (e.g. Zod–Effect bridge, types). We do not test LLM outputs—they are non-deterministic and the provider is a hosted service.
 
 ## Acceptance Criteria
 
@@ -70,17 +71,23 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 - [ ] Effect used for Option, Either, Effect, pipe; Zod kept for schemas with an Effect-friendly bridge where needed.
 - [ ] AI usage defined as an Effect service (Context + Tag + Layer): interface for Q/A generation and answer grading; implementation can be swapped (e.g. OpenAI now).
 - [ ] No custom Biome/Grit rules for old FP patterns (already removed).
-- [ ] Project builds and existing tests (if any) pass; new unit tests for AI service interface and OpenAI implementation where appropriate.
+- [ ] Project builds and existing tests (if any) pass; new unit tests only for deterministic logic (Zod–Effect bridge, types); AI callers use a mock Layer; no tests of LLM output.
+
+## Decisions (recorded)
+
+- **File layout**: `lib/ai/types.ts` for AIService interface and shared types; `server/ai/` for OpenAI implementation (and mock can live in `lib/ai/` or `server/ai/`).
+- **GradeResult**: `{ grade: "correct" | "partial" | "incorrect"; confidence: number; rationale: string }` with confidence in 0–1.
+- **AIGenerationError / GradingError**: `{ _tag: "AIGenerationError" | "GradingError"; message: string; code?: string }`. No `cause` for v1 (optional later for error chaining if we want to attach the underlying API error for debugging).
+- **fp-examples.ts**: Remove; do not replace with Effect examples for v1.
 
 ## Open Questions
 
-- Exact file layout for `server/ai` vs `lib/ai` (server-only vs shared types).
-- Whether to keep `fp-examples.ts` as Effect examples or remove entirely (spec says remove).
+- None for this gameplan.
 
 ## Explicit Opinions
 
 - Effect-TS over custom Option/Either: one standard library, DI (Context/Tag/Layer) built in.
-- AI as an Effect service: swappable provider, testable with mocks.
+- AI as an Effect service: swappable provider; callers test with a mock Layer; we do not test LLM outputs (non-deterministic, hosted service).
 - Zod stays for v1; minimal bridge to Effect only where we need to run validation inside Effect.
 
 ## Patches
@@ -89,12 +96,12 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 
 **Files to create/modify:**
 - `package.json` (add `effect`)
-- `lib/ai/types.ts` (or `server/ai/types.ts`): Tag, interface, error and result types
+- `lib/ai/types.ts`: Tag, interface, error and result types
 
 **Changes:**
 1. Add `effect` dependency.
 2. Define `AIService` Tag and interface (`generateQuestionAnswer`, `gradeAnswer`).
-3. Define `AIGenerationError`, `GradingError`, `GradeResult` (grade, confidence, rationale).
+3. Define `AIGenerationError`, `GradingError` as `{ _tag; message: string; code?: string }`; `GradeResult` as `{ grade: "correct" | "partial" | "incorrect"; confidence: number; rationale: string }` (confidence 0–1).
 
 ### Patch 2 [INFRA]: Add Zod–Effect bridge
 
@@ -104,14 +111,13 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 **Changes:**
 1. Thin helper that wraps `schema.safeParse` in Effect.succeed / Effect.fail.
 
-### Patch 3 [INFRA]: Add test stubs for AI service
+### Patch 3 [INFRA]: Add mock AI service Layer for tests (optional)
 
 **Files to create:**
-- `lib/ai/ai.service.test.ts` (or equivalent)
+- `lib/ai/ai.service.mock.ts` (or equivalent): mock Layer that returns fixed deterministic values
 
 **Changes:**
-1. Test stubs with `.skip`: generateQuestionAnswer returns structured Q/A; gradeAnswer returns grade + confidence + rationale; failures are typed.
-2. Document stub → implementation patch in Test Map.
+1. Provide a mock `AIService` Layer for use in tests that depend on the AI service (e.g. callers). No tests of real LLM output—we only test deterministic local logic; the real OpenAI implementation is a hosted service with non-deterministic responses.
 
 ### Patch 4 [GATED]: Implement OpenAI AI service and Layer
 
@@ -121,7 +127,7 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 **Changes:**
 1. Implement `generateQuestionAnswer` and `gradeAnswer` using OpenAI GPT-4o-mini.
 2. Export `OpenAIAIServiceLayer` (or similar) that provides the service.
-3. Unskip and implement tests that use the real Layer (or a test double).
+3. No unit tests for LLM output (non-deterministic, hosted); any tests that need AIService use the mock Layer from Patch 3.
 
 ### Patch 5 [BEHAVIOR]: Remove custom FP and migrate usages to Effect
 
@@ -144,11 +150,12 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 
 ## Test Map
 
-| Test Name | File | Stub Patch | Impl Patch |
-|-----------|------|------------|------------|
-| AIService > generateQuestionAnswer returns question and canonicalAnswer | lib/ai/ai.service.test.ts | 3 | 4 |
-| AIService > gradeAnswer returns grade, confidence, rationale | lib/ai/ai.service.test.ts | 3 | 4 |
-| Zod–Effect bridge > parseZodToEffect succeeds on valid input | lib/utils/zod-effect.test.ts | 2 | 2 (same patch) or 5 |
+Only deterministic local behavior is tested. LLM outputs are not tested (non-deterministic; hosted service).
+
+| Test Name | File | Patch |
+|-----------|------|-------|
+| Zod–Effect bridge > parseZodToEffect succeeds on valid input | lib/utils/zod-effect.test.ts | 2 |
+| Zod–Effect bridge > parseZodToEffect fails on invalid input (typed ZodError) | lib/utils/zod-effect.test.ts | 2 |
 
 ## Dependency Graph
 
@@ -156,7 +163,7 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 - Patch 1 [INFRA] -> []
 - Patch 2 [INFRA] -> [1]
 - Patch 3 [INFRA] -> [1]
-- Patch 4 [GATED] -> [1, 3]
+- Patch 4 [GATED] -> [1]
 - Patch 5 [BEHAVIOR] -> [1, 2]
 - Patch 6 [INFRA] -> [4]
 ```
@@ -167,7 +174,6 @@ Not needed. This is foundational infrastructure. No user-facing feature flags.
 
 - [ ] Feature flag strategy documented (not needed — infra only).
 - [ ] Early patches contain only non-functional changes (`[INFRA]`).
-- [ ] Test stubs with `.skip` in `[INFRA]` patches where applicable.
-- [ ] Test implementations co-located with code (Patch 4).
-- [ ] Test Map complete; Impl Patch matches implementation patch.
+- [ ] Mock Layer for AIService in Patch 3 for callers that need it; no tests of LLM output.
+- [ ] Test Map covers only deterministic logic (Zod–Effect bridge).
 - [ ] `[BEHAVIOR]` patch (5) is justified: removal of old FP and migration to Effect.

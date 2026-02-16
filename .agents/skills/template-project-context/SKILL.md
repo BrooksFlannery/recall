@@ -21,10 +21,10 @@ description: Project context for this template repo - tech stack, code standards
 ## Code Standards
 
 - Hardcore functional programming whenever possible
-- Custom FP utilities (Option, Either, pipe) — built from scratch
+- Effect-TS for Option, Either, Effect, pipe and dependency injection (Context, Tag, Layer)
 - Type-safe patterns throughout
 - Standards will evolve as the project develops
 
 ## Reference Files
 
-- See `@lib/utils/fp-examples.ts` for idiomatic examples of using Option, Either, and pipe patterns
+- Effect-TS docs and `lib/ai/types.ts` (once added) for service/DI patterns
