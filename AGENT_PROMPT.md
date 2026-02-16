@@ -1,4 +1,4 @@
-# [effect-ts-migration] Patch 1: Add Effect dependency and AI service types
+# [effect-ts-migration] Patch 2: Add Zod–Effect bridge
 
 ## Problem Statement
 
@@ -16,38 +16,62 @@ Remove custom FP code and adopt Effect-TS for Option, Either, Effect, and pipe. 
 
 ## Dependencies Completed
 
-None - this patch has no dependencies.
+Patch 1 added Effect dependency and defined AI service types (`AIService` Tag, interface with `generateQuestionAnswer` and `gradeAnswer`, error types `AIGenerationError` and `GradingError`, `GradeResult` type) in `lib/ai/types.ts`.
 
 ## Your Task
 
-**Files to create/modify:**
-- `package.json` (add `effect`)
-- `lib/ai/types.ts`: Tag, interface, error and result types
+**Files to create:**
+- `lib/utils/zod-effect.ts` (or similar): `parseZodToEffect(schema, value) => Effect<T, ZodError>`
 
 **Changes:**
-1. Add `effect` dependency.
-2. Define `AIService` Tag and interface (`generateQuestionAnswer`, `gradeAnswer`).
-3. Define `AIGenerationError`, `GradingError` as `{ _tag; message: string; code?: string }`; `GradeResult` as `{ grade: "correct" | "partial" | "incorrect"; confidence: number; rationale: string }` (confidence 0–1).
+1. Thin helper that wraps `schema.safeParse` in Effect.succeed / Effect.fail.
 
 ## Test Stubs to Add
 
-None - this patch does not introduce test stubs.
+Add the following `.skip` tests to `lib/utils/zod-effect.test.ts`:
+
+```typescript
+import { describe, it, expect } from 'vitest'
+import { z } from 'zod'
+import { Effect } from 'effect'
+import { parseZodToEffect } from './zod-effect'
+
+describe.skip('Zod–Effect bridge', () => {
+  it('parseZodToEffect succeeds on valid input', async () => {
+    const schema = z.object({ name: z.string() })
+    const input = { name: 'Alice' }
+
+    const result = await Effect.runPromise(parseZodToEffect(schema, input))
+
+    expect(result).toEqual({ name: 'Alice' })
+  })
+
+  it('parseZodToEffect fails on invalid input (typed ZodError)', async () => {
+    const schema = z.object({ name: z.string() })
+    const input = { name: 123 }
+
+    const effect = parseZodToEffect(schema, input)
+
+    await expect(Effect.runPromise(effect)).rejects.toThrow()
+  })
+})
+```
 
 ## Tests to Unskip and Implement
 
-None - this patch does not implement tests.
+None - this patch introduces test stubs but does not implement them yet.
 
 ## Git Instructions
 
-- Branch from: `main`
-- Branch name: `effect-ts-migration/patch-1-effect-and-ai-types`
-- PR base: `main`
+- Branch from: `effect-ts-migration/patch-1-effect-and-ai-types`
+- Branch name: `effect-ts-migration/patch-2-zod-effect-bridge`
+- PR base: `effect-ts-migration/patch-1-effect-and-ai-types`
 
 **IMPORTANT: Open a draft PR immediately after your first commit.** Do not wait until implementation is complete. This ensures the PR title format is correct from the start.
 
 After your first commit, run:
 ```bash
-gh pr create --draft --title "[effect-ts-migration] Patch 1: Add Effect dependency and AI service types" --body "Work in progress" --base main
+gh pr create --draft --title "[effect-ts-migration] Patch 2: Add Zod–Effect bridge" --body "Work in progress" --base effect-ts-migration/patch-1-effect-and-ai-types
 ```
 
 Then continue implementing. When finished:
@@ -59,6 +83,6 @@ Then continue implementing. When finished:
 
 **You MUST use this EXACT title format:**
 
-`[effect-ts-migration] Patch 1: Add Effect dependency and AI service types`
+`[effect-ts-migration] Patch 2: Add Zod–Effect bridge`
 
 Do NOT use conventional commit format (e.g., `feat:`, `fix:`). The bracketed project name and patch number are required for tracking.
