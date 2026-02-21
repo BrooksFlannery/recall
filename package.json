@@ -13,6 +13,7 @@
     "format": "biome format --write .",
     "type-check": "tsc --noEmit",
     "pre-commit": "bun run lint && bun run type-check",
+    "vercel:env-pull": "vercel env pull .env.local",
     "install-git-hooks": "bash scripts/install-git-hooks.sh",
     "postinstall": "bun run install-git-hooks",
     "db:setup": "bash scripts/db-setup.sh",
