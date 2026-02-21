@@ -55,6 +55,8 @@ jobs:
         run: bun install --frozen-lockfile --no-progress
       - name: Run build
         run: bun run build
+        env:
+          DATABASE_URL: postgresql://localhost/build
 
   check-todo:
     runs-on: ubuntu-latest
