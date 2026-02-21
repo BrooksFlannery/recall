@@ -1,4 +1,4 @@
-# [effect-ts-migration] Patch 1: Add Effect dependency and AI service types
+# [effect-ts-migration] Patch 3: Add mock AI service Layer for tests
 
 ## Problem Statement
 
@@ -16,18 +16,15 @@ Remove custom FP code and adopt Effect-TS for Option, Either, Effect, and pipe. 
 
 ## Dependencies Completed
 
-None - this patch has no dependencies.
+Patch 1 added Effect dependency and defined AI service types (`AIService` Tag, interface with `generateQuestionAnswer` and `gradeAnswer`, error types `AIGenerationError` and `GradingError`, `GradeResult` type) in `lib/ai/types.ts`.
 
 ## Your Task
 
-**Files to create/modify:**
-- `package.json` (add `effect`)
-- `lib/ai/types.ts`: Tag, interface, error and result types
+**Files to create:**
+- `lib/ai/ai.service.mock.ts` (or equivalent): mock Layer that returns fixed deterministic values
 
 **Changes:**
-1. Add `effect` dependency.
-2. Define `AIService` Tag and interface (`generateQuestionAnswer`, `gradeAnswer`).
-3. Define `AIGenerationError`, `GradingError` as `{ _tag; message: string; code?: string }`; `GradeResult` as `{ grade: "correct" | "partial" | "incorrect"; confidence: number; rationale: string }` (confidence 0–1).
+1. Provide a mock `AIService` Layer for use in tests that depend on the AI service (e.g. callers). No tests of real LLM output—we only test deterministic local logic; the real OpenAI implementation is a hosted service with non-deterministic responses.
 
 ## Test Stubs to Add
 
@@ -39,15 +36,15 @@ None - this patch does not implement tests.
 
 ## Git Instructions
 
-- Branch from: `main`
-- Branch name: `effect-ts-migration/patch-1-effect-and-ai-types`
-- PR base: `main`
+- Branch from: `effect-ts-migration/patch-1-effect-and-ai-types`
+- Branch name: `effect-ts-migration/patch-3-mock-ai-service`
+- PR base: `effect-ts-migration/patch-1-effect-and-ai-types`
 
 **IMPORTANT: Open a draft PR immediately after your first commit.** Do not wait until implementation is complete. This ensures the PR title format is correct from the start.
 
 After your first commit, run:
 ```bash
-gh pr create --draft --title "[effect-ts-migration] Patch 1: Add Effect dependency and AI service types" --body "Work in progress" --base main
+gh pr create --draft --title "[effect-ts-migration] Patch 3: Add mock AI service Layer for tests" --body "Work in progress" --base effect-ts-migration/patch-1-effect-and-ai-types
 ```
 
 Then continue implementing. When finished:
@@ -59,6 +56,6 @@ Then continue implementing. When finished:
 
 **You MUST use this EXACT title format:**
 
-`[effect-ts-migration] Patch 1: Add Effect dependency and AI service types`
+`[effect-ts-migration] Patch 3: Add mock AI service Layer for tests`
 
 Do NOT use conventional commit format (e.g., `feat:`, `fix:`). The bracketed project name and patch number are required for tracking.

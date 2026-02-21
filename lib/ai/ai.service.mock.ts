@@ -1,11 +1,11 @@
-import { type Context, Effect, Layer } from "effect"
+import { Effect, Layer } from "effect"
 import { AIService } from "./types"
 
 /**
  * Mock AI Service implementation for testing
  * Returns deterministic, fixed values for all operations
  */
-const mockImplementation: Context.Tag.Service<AIService> = {
+export const MockAIServiceLayer = Layer.succeed(AIService, {
   generateQuestionAnswer: (content: string) =>
     Effect.succeed({
       question: `What is the main topic of: "${content.slice(0, 50)}${content.length > 50 ? "..." : ""}"?`,
@@ -46,10 +46,5 @@ const mockImplementation: Context.Tag.Service<AIService> = {
       rationale: "Answer does not match the canonical answer.",
     })
   },
-}
-
-/**
- * Mock AI Service Layer for testing
- * Use this in tests that depend on the AI service
- */
-export const MockAIServiceLayer = Layer.succeed(AIService, mockImplementation)
+  // biome-ignore lint/suspicious/noExplicitAny: Effect-TS Context.Tag declaration merging requires type assertion
+} as any)
