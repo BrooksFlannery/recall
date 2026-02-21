@@ -1,5 +1,2 @@
-import { createAuthClient } from "better-auth/react"
-
-export const authClient = createAuthClient({
-  baseURL: process.env["NEXT_PUBLIC_AUTH_URL"] || "http://localhost:3000",
-})
+// Re-export from the canonical auth client module
+export { authClient } from "@/lib/auth-client"
