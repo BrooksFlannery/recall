@@ -1,5 +1,5 @@
 import { Layer, ManagedRuntime } from "effect"
-import { OpenAIAIServiceLayer } from "@/lib/ai/openai"
+import { OpenAIAIServiceLayer } from "@/lib/ai/openai-ai.service"
 
 /**
  * Shared server-side Effect runtime.

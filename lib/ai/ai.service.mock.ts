@@ -9,7 +9,7 @@ export const MockAIServiceLayer = Layer.succeed(AIService, {
   generateQuestionAnswer: (content: string) =>
     Effect.succeed({
       question: `What is the main topic of: "${content.slice(0, 50)}${content.length > 50 ? "..." : ""}"?`,
-      answer: `The main topic is about ${content.slice(0, 30)}${content.length > 30 ? "..." : ""}.`,
+      canonicalAnswer: `The main topic is about ${content.slice(0, 30)}${content.length > 30 ? "..." : ""}.`,
     }),
 
   gradeAnswer: (userAnswer: string, canonicalAnswer: string) => {
@@ -46,5 +46,4 @@ export const MockAIServiceLayer = Layer.succeed(AIService, {
       rationale: "Answer does not match the canonical answer.",
     })
   },
-  // biome-ignore lint/suspicious/noExplicitAny: Effect-TS Context.Tag declaration merging requires type assertion
-} as any)
+})
