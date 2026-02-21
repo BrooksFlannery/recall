@@ -1,12 +1,21 @@
 import { betterAuth } from "better-auth"
+import { drizzleAdapter } from "better-auth/adapters/drizzle"
+import { db } from "@/server/db"
+import * as schema from "@/server/db/schema"
 
-// TODO: Configure BetterAuth with your database adapter
-// import { prismaAdapter } from "better-auth/adapters/prisma"
-// For now, using a basic setup - you'll need to add your database connection
 export const auth = betterAuth({
-  // database: prismaAdapter(prisma), // Uncomment when Prisma is set up
+  database: drizzleAdapter(db, {
+    provider: "pg",
+    schema,
+  }),
   emailAndPassword: {
     enabled: true,
+  },
+  socialProviders: {
+    google: {
+      clientId: process.env["GOOGLE_CLIENT_ID"] as string,
+      clientSecret: process.env["GOOGLE_CLIENT_SECRET"] as string,
+    },
   },
 })
 
