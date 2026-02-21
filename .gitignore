@@ -58,3 +58,6 @@ Thumbs.db
 
 # Biome
 .biome/
+
+# Agent prompts
+AGENT_PROMPT.md
