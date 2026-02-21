@@ -10,17 +10,18 @@ if [ ! -d "$SOURCE_HOOKS_DIR" ]; then
   exit 1
 fi
 
-# Find the actual git directory (works for both regular repos and worktrees)
-GIT_DIR=$(git rev-parse --git-dir 2>/dev/null || echo "")
+# Find the common git directory where hooks are stored
+# --git-common-dir returns the shared directory for both regular repos and worktrees
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
 
-if [ -z "$GIT_DIR" ]; then
+if [ -z "$GIT_COMMON_DIR" ]; then
   echo "❌ Not in a git repository"
   exit 1
 fi
 
-GIT_HOOKS_DIR="$GIT_DIR/hooks"
+GIT_HOOKS_DIR="$GIT_COMMON_DIR/hooks"
 
-# Create hooks directory if it doesn't exist (needed for worktrees)
+# Create hooks directory if it doesn't exist
 mkdir -p "$GIT_HOOKS_DIR"
 
 # Install each hook from .githooks
