@@ -47,5 +47,4 @@ export interface AIService {
 /**
  * AI Service Tag for dependency injection
  */
-// biome-ignore lint/suspicious/noUnsafeDeclarationMerging: Effect-TS Context.Tag pattern requires declaration merging
-export class AIService extends Context.Tag("AIService")<AIService, AIService>() {}
+export const AIService = Context.GenericTag<AIService>("@app/AIService")

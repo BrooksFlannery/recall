@@ -266,6 +266,21 @@
           }
         }
       }
+    },
+    {
+      "includes": ["lib/ai/**/*.ts"],
+      "linter": {
+        "rules": {
+          "style": {
+            "useNamingConvention": {
+              "level": "error",
+              "options": {
+                "strictCase": false
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }
