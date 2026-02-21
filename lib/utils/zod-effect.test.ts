@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { Effect } from 'effect'
 import { parseZodToEffect } from './zod-effect'
 
-describe.skip('Zod–Effect bridge', () => {
+describe('Zod–Effect bridge', () => {
   it('parseZodToEffect succeeds on valid input', async () => {
     const schema = z.object({ name: z.string() })
     const input = { name: 'Alice' }
