@@ -50,7 +50,7 @@ const makeOpenAiService = Effect.sync(() => {
 
           return {
             question: parsed.question,
-            answer: parsed.answer,
+            canonicalAnswer: parsed.answer,
           }
         },
         catch: (error) => {

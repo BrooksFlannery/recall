@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { z } from 'zod'
-import { Effect } from 'effect'
+import { Effect, Either } from 'effect'
 import { parseZodToEffect } from './zod-effect'
 
 describe('Zod–Effect bridge', () => {
@@ -17,8 +17,16 @@ describe('Zod–Effect bridge', () => {
     const schema = z.object({ name: z.string() })
     const input = { name: 123 }
 
-    const effect = parseZodToEffect(schema, input)
+    const either = await Effect.runPromise(
+      Effect.either(parseZodToEffect(schema, input))
+    )
 
-    await expect(Effect.runPromise(effect)).rejects.toThrow()
+    expect(Either.isLeft(either)).toBe(true)
+    if (Either.isLeft(either)) {
+      expect(either.left).toMatchObject({
+        name: 'ZodError',
+        issues: expect.any(Array),
+      })
+    }
   })
 })

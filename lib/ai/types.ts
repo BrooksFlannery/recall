@@ -33,7 +33,7 @@ export interface AIService {
    */
   readonly generateQuestionAnswer: (
     content: string
-  ) => Effect.Effect<{ question: string; answer: string }, AIGenerationError>
+  ) => Effect.Effect<{ question: string; canonicalAnswer: string }, AIGenerationError>
 
   /**
    * Grade a user's answer against a canonical answer
