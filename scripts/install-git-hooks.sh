@@ -3,7 +3,6 @@
 
 set -e
 
-GIT_HOOKS_DIR=".git/hooks"
 SOURCE_HOOKS_DIR=".githooks"
 
 if [ ! -d "$SOURCE_HOOKS_DIR" ]; then
@@ -11,10 +10,19 @@ if [ ! -d "$SOURCE_HOOKS_DIR" ]; then
   exit 1
 fi
 
-if [ ! -d "$GIT_HOOKS_DIR" ]; then
-  echo "❌ .git/hooks directory not found. Are you in a git repository?"
+# Find the common git directory where hooks are stored
+# --git-common-dir returns the shared directory for both regular repos and worktrees
+GIT_COMMON_DIR=$(git rev-parse --git-common-dir 2>/dev/null || echo "")
+
+if [ -z "$GIT_COMMON_DIR" ]; then
+  echo "❌ Not in a git repository"
   exit 1
 fi
+
+GIT_HOOKS_DIR="$GIT_COMMON_DIR/hooks"
+
+# Create hooks directory if it doesn't exist
+mkdir -p "$GIT_HOOKS_DIR"
 
 # Install each hook from .githooks
 for hook in "$SOURCE_HOOKS_DIR"/*; do
