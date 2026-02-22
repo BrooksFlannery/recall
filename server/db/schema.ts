@@ -1,4 +1,6 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+
+export const factTypeEnum = pgEnum("fact_type", ["generic"])
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -37,6 +39,21 @@ export const account = pgTable("account", {
   refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
   scope: text("scope"),
   password: text("password"),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+})
+
+export const facts = pgTable("facts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  content: text("content").notNull(),
+  question: text("question").notNull(),
+  answer: text("answer").notNull(),
+  type: factTypeEnum("type").notNull().default("generic"),
+  srsLevel: integer("srs_level").notNull().default(0),
+  nextScheduledAt: timestamp("next_scheduled_at").notNull(),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
 })
