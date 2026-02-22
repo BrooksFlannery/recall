@@ -8,12 +8,20 @@ export default function Home() {
         <p className="text-lg text-gray-600 mb-8">
           Your personal knowledge base. Save what matters, remember it forever.
         </p>
-        <Link
-          href="/sign-in"
-          className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          Get started
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Link
+            href="/sign-up"
+            className="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-medium hover:bg-blue-700 transition-colors text-center"
+          >
+            Get started
+          </Link>
+          <Link
+            href="/sign-in"
+            className="inline-block border border-gray-300 text-gray-700 px-8 py-3 rounded-lg text-lg font-medium hover:bg-gray-50 transition-colors text-center"
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
     </main>
   )

@@ -5,14 +5,15 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
-export default function SignInPage() {
+export default function SignUpPage() {
   const router = useRouter()
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
-  async function handleGoogleSignIn() {
+  async function handleGoogleSignUp() {
     await authClient.signIn.social({ provider: "google", callbackURL: "/app" })
   }
 
@@ -22,13 +23,14 @@ export default function SignInPage() {
     setIsLoading(true)
 
     try {
-      const { error: signInError } = await authClient.signIn.email({
+      const { error: signUpError } = await authClient.signUp.email({
         email,
         password,
+        name: name.trim(),
         callbackURL: "/app",
       })
-      if (signInError) {
-        setError(signInError.message ?? "Sign-in failed")
+      if (signUpError) {
+        setError(signUpError.message ?? "Sign-up failed")
       } else {
         router.push("/app")
       }
@@ -40,11 +42,11 @@ export default function SignInPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">
       <div className="w-full max-w-md bg-white rounded-xl shadow-sm p-8 space-y-6">
-        <h1 className="text-2xl font-bold text-center">Sign in to Recall</h1>
+        <h1 className="text-2xl font-bold text-center">Create your account</h1>
 
         <button
           type="button"
-          onClick={handleGoogleSignIn}
+          onClick={handleGoogleSignUp}
           className="w-full flex items-center justify-center gap-2 border border-gray-300 rounded-lg px-4 py-2 text-sm font-medium hover:bg-gray-50 transition-colors"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
@@ -79,6 +81,15 @@ export default function SignInPage() {
 
         <form onSubmit={handleEmailSubmit} className="space-y-4">
           <input
+            type="text"
+            placeholder="Name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required={true}
+            autoComplete="name"
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <input
             type="email"
             placeholder="Email address"
             value={email}
@@ -93,7 +104,7 @@ export default function SignInPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required={true}
-            autoComplete="current-password"
+            autoComplete="new-password"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           {error !== null && <p className="text-red-500 text-sm">{error}</p>}
@@ -102,14 +113,14 @@ export default function SignInPage() {
             disabled={isLoading}
             className="w-full bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? "Loading…" : "Sign in"}
+            {isLoading ? "Loading…" : "Create account"}
           </button>
         </form>
 
         <p className="text-center text-sm text-gray-600">
-          {"Don't have an account? "}
-          <Link href="/sign-up" className="text-blue-600 hover:underline font-medium">
-            Sign up
+          {"Already have an account? "}
+          <Link href="/sign-in" className="text-blue-600 hover:underline font-medium">
+            Sign in
           </Link>
         </p>
       </div>

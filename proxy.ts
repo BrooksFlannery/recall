@@ -2,7 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { auth } from "@/server/auth"
 
 // Routes that are publicly accessible without authentication
-const PUBLIC_PREFIXES = ["/api/auth", "/sign-in"]
+const PUBLIC_PREFIXES = ["/api/auth", "/sign-in", "/sign-up"]
 const PUBLIC_EXACT = ["/"]
 
 function isPublicPath(pathname: string): boolean {
@@ -10,7 +10,7 @@ function isPublicPath(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
-export async function middleware(request: NextRequest): Promise<NextResponse> {
+export async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl
 
   if (isPublicPath(pathname)) {

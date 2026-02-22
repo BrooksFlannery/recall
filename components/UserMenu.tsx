@@ -1,6 +1,7 @@
 "use client"
 
 import { authClient } from "@/lib/auth-client"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 
 interface UserMenuProps {
@@ -33,7 +34,12 @@ export function UserMenu({ email, name, image }: UserMenuProps) {
           {name.charAt(0).toUpperCase()}
         </div>
       )}
-      <span className="text-sm font-medium hidden sm:block">{name || email}</span>
+      <Link
+        href="/app/profile"
+        className="text-sm font-medium hidden sm:block text-gray-700 hover:text-gray-900 hover:underline"
+      >
+        {name || email}
+      </Link>
       <button
         type="button"
         onClick={handleSignOut}

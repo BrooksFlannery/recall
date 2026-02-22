@@ -17,9 +17,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           Recall
         </Link>
         <nav className="flex items-center gap-4">
-          <Link href="/app/profile" className="text-sm text-gray-600 hover:text-gray-900">
-            Profile
-          </Link>
           <UserMenu
             email={session.user.email}
             name={session.user.name}
