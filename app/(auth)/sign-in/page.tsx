@@ -1,6 +1,7 @@
 "use client"
 
 import { authClient } from "@/lib/auth-client"
+import { signInFormSchema } from "@/lib/auth/form-schemas"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -9,26 +10,34 @@ export default function SignInPage() {
   const router = useRouter()
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | undefined>(undefined)
   const [isLoading, setIsLoading] = useState(false)
 
   async function handleGoogleSignIn() {
     await authClient.signIn.social({ provider: "google", callbackURL: "/app" })
   }
 
+  // Zod for parse-at-boundary; Effect would be overkill for this single form.
   async function handleEmailSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
-    setError(null)
+    setError(undefined)
     setIsLoading(true)
+
+    const parsed = signInFormSchema.safeParse({ email, password })
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]!.message)
+      setIsLoading(false)
+      return
+    }
 
     try {
       const { error: signInError } = await authClient.signIn.email({
-        email,
-        password,
+        email: parsed.data.email,
+        password: parsed.data.password,
         callbackURL: "/app",
       })
       if (signInError) {
-        setError(signInError.message ?? "Sign-in failed")
+        setError(signInError.message)
       } else {
         router.push("/app")
       }
@@ -96,7 +105,7 @@ export default function SignInPage() {
             autoComplete="current-password"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
-          {error !== null && <p className="text-red-500 text-sm">{error}</p>}
+          {typeof error === "string" && <p className="text-red-500 text-sm">{error}</p>}
           <button
             type="submit"
             disabled={isLoading}
