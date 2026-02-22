@@ -25,7 +25,7 @@ export default function SignInPage() {
 
     const parsed = signInFormSchema.safeParse({ email, password })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]!.message)
+      setError(parsed.error.issues[0]?.message)
       setIsLoading(false)
       return
     }

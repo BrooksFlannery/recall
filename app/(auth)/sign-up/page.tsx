@@ -26,7 +26,7 @@ export default function SignUpPage() {
 
     const parsed = signUpFormSchema.safeParse({ name, email, password })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]!.message)
+      setError(parsed.error.issues[0]?.message)
       setIsLoading(false)
       return
     }
