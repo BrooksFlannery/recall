@@ -1,5 +1,5 @@
 {
-  "id": "a4397c76-e083-437d-a01a-0ccbe436827d",
+  "id": "052379d2-ac16-45a3-bb65-98481af205ce",
   "prevId": "d12fbed9-cbcf-41a5-bad1-dfa620ac68e6",
   "version": "7",
   "dialect": "postgresql",
@@ -109,6 +109,63 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.fact_items": {
+      "name": "fact_items",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "fact_id": {
+          "name": "fact_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "question": {
+          "name": "question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "canonical_answer": {
+          "name": "canonical_answer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "fact_items_fact_id_facts_id_fk": {
+          "name": "fact_items_fact_id_facts_id_fk",
+          "tableFrom": "fact_items",
+          "tableTo": "facts",
+          "columnsFrom": [
+            "fact_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.facts": {
       "name": "facts",
       "schema": "",
@@ -125,20 +182,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "question": {
-          "name": "question",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "answer": {
-          "name": "answer",
+        "user_content": {
+          "name": "user_content",
           "type": "text",
           "primaryKey": false,
           "notNull": true
