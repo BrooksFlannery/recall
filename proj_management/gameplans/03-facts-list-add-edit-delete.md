@@ -13,7 +13,7 @@ Users need to build and maintain a single list of facts. Each fact is one block 
 
 ## Solution Summary
 
-Add `facts` table and oRPC (or existing API) procedures for list, create, update, delete. List returns facts for the current user ordered by `created_at` desc. Create: accept user content, call AI service to generate question + canonical answer, store fact with type `generic`, SRS level 0, and set `next_scheduled_at`. Edit: accept new user content and “keep schedule” flag; regenerate Q/A via AI; if “keep schedule” is off, reset SRS. Delete: hard delete fact. UI: facts list page, “Add Fact” button opening a modal (text input + submit), edit modal with user content + “Keep schedule” switch + Save, delete with confirmation.
+Add `facts` table and oRPC procedures for list, create, update, delete. Migrate from tRPC to oRPC as the first infra step in this gameplan. List returns facts for the current user ordered by `created_at` desc. Create: accept user content, call AI service to generate question + canonical answer, store fact with type `generic`, SRS level 0, and set `next_scheduled_at`. Edit: accept new user content and “keep schedule” flag; regenerate Q/A via AI; if “keep schedule” is off, reset SRS. Delete: hard delete fact. UI: facts list page, “Add Fact” button opening a modal (text input + submit), edit modal with user content + “Keep schedule” switch + Save, delete with confirmation.
 
 ## Mergability Strategy
 
@@ -23,7 +23,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ### Patch Ordering Strategy
 
-**Early**: Facts schema and migrations; oRPC procedures (or API) stubs/types; test stubs.  
+**Early**: Migrate to oRPC; facts schema and migrations; oRPC procedure stubs/types; test stubs.  
 **Middle**: Implement create (with AI service), update, delete, list; wire AI Layer in call path.  
 **Late**: UI — list page, Add Fact modal, edit modal, delete confirmation.
 
@@ -31,7 +31,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 - **After M2**: Auth in place; user session available; no facts schema or API.
 - **After M1**: AI service (Effect) exists; need to call it from fact create/edit.
-- **API**: tRPC may exist; workstream says oRPC + React Query. This gameplan can assume oRPC procedures for facts (list, create, update, delete) or be written to be API-agnostic; prefer oRPC if migration is done, else document “facts API” and implement with oRPC when available.
+- **API**: tRPC exists today. This gameplan migrates to oRPC first, then implements facts procedures on oRPC with React Query on the client.
 
 ## Required Changes
 
@@ -41,9 +41,10 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ### 2. API (oRPC)
 
+- Procedure context includes session (e.g. from BetterAuth) so all procedures can scope by `user_id`.
 - `facts.list`: () => facts for current user, order by created_at desc.
-- `facts.create`: (input: { user_content: string }) => validate, call AIService.generateQuestionAnswer, insert fact with type generic, srs_level 0, next_scheduled_at = now + 1 day (or per spec).
-- `facts.update`: (input: { id, user_content, keep_schedule: boolean }) => if !keep_schedule reset SRS; call AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer (and SRS fields if reset).
+- `facts.create`: (input: { user_content: string }) => validate, call AIService.generateQuestionAnswer, insert fact with type generic, srs_level 0, next_scheduled_at = now + 1 day.
+- `facts.update`: (input: { id, user_content, keep_schedule: boolean }) => if !keep_schedule reset SRS (srs_level 0, next_scheduled_at = now + 1 day); call AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer (and SRS fields if reset).
 - `facts.delete`: (input: { id }) => hard delete fact for current user.
 
 ### 3. Authorization
@@ -67,11 +68,12 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ## Open Questions
 
-- oRPC migration: do before this gameplan or as part of it? (Workstream has oRPC in tech stack; if tRPC still present, either migrate in M2/M3 or implement facts on tRPC and migrate later.)
-- Exact SRS initial state: next_scheduled_at = now + 1 day vs now + Fibonacci[0] (spec says level 0 → 1 day).
+- (None; previously open items resolved in Explicit Opinions.)
 
 ## Explicit Opinions
 
+- **Migrate to oRPC in this gameplan**: Replace tRPC with oRPC as the first infra step; implement all facts procedures on oRPC. Do not implement facts on tRPC.
+- **SRS initial state**: For new facts and for reset-on-edit, use `next_scheduled_at = now + 1 day` (level 0 → 1 day).
 - Single flat list: no notebooks/pages/categories in v1.
 - Keep schedule switch + single Save: one clear edit action, explicit control over SRS reset.
 - Hard delete only: no soft delete in v1.
@@ -79,7 +81,21 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ## Patches
 
-### Patch 1 [INFRA]: Facts schema and migration
+### Patch 1 [INFRA]: Migrate from tRPC to oRPC
+
+**Files to create/modify:**
+- oRPC server router setup (replacing or alongside `server/trpc/`)
+- oRPC client and React Query integration (replacing `lib/trpc/`)
+- API route for oRPC (e.g. `app/api/[...orpc]/route.ts` or equivalent)
+- Layout/provider: use oRPC client and QueryClient for app routes
+- Procedure context: include session (e.g. from BetterAuth) so procedures can read `user.id`
+
+**Changes:**
+1. Install oRPC deps; create server router, client, and API route.
+2. Build procedure context with session (auth) for user-scoped procedures.
+3. Replace tRPC provider with oRPC + React Query in app layout; remove or deprecate tRPC usage for app routes.
+
+### Patch 2 [INFRA]: Facts schema and migration
 
 **Files to create/modify:**
 - `server/db/schema.ts`: facts table with all fields; fact type enum
@@ -88,16 +104,16 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 **Changes:**
 1. Add facts table and enum; run migration.
 
-### Patch 2 [INFRA]: Facts API types and procedure signatures (oRPC)
+### Patch 3 [INFRA]: Facts API types and procedure signatures (oRPC)
 
 **Files to create/modify:**
-- oRPC router or equivalent: facts.list, facts.create, facts.update, facts.delete input/output types
+- oRPC router: facts.list, facts.create, facts.update, facts.delete input/output types
 - Zod schemas for input validation
 
 **Changes:**
 1. Define input/output types and schemas; export procedure signatures (implementation can be stub that throws “not implemented” or return empty list).
 
-### Patch 3 [INFRA]: Test stubs for facts procedures
+### Patch 4 [INFRA]: Test stubs for facts procedures
 
 **Files to create:**
 - `server/facts/facts.test.ts` or similar
@@ -105,7 +121,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 **Changes:**
 1. Stubs with .skip: list returns newest first; create calls AI and persists; update respects keep_schedule; delete removes fact.
 
-### Patch 4 [BEHAVIOR]: Implement facts.list and facts.delete
+### Patch 5 [BEHAVIOR]: Implement facts.list and facts.delete
 
 **Files to modify:**
 - Facts router implementation
@@ -115,7 +131,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 2. delete: delete fact where id and user_id match.
 3. Unskip list/delete tests.
 
-### Patch 5 [BEHAVIOR]: Implement facts.create with AI
+### Patch 6 [BEHAVIOR]: Implement facts.create with AI
 
 **Files to modify:**
 - Facts router; wire AIService Layer in app/server context
@@ -130,7 +146,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 - Facts router
 
 **Changes:**
-1. update: load fact for user; if !keep_schedule set srs_level 0, next_scheduled_at = now + 1 day (or Fibonacci[0]); call AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer, and SRS fields.
+1. update: load fact for user; if !keep_schedule set srs_level 0, next_scheduled_at = now + 1 day; run AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer, and SRS fields.
 2. Unskip update test.
 
 ### Patch 7 [BEHAVIOR]: Facts list page and Add Fact modal
@@ -157,10 +173,10 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 | Test Name | File | Stub Patch | Impl Patch |
 |-----------|------|------------|------------|
-| facts.list > returns facts for user newest first | server/facts/facts.test.ts | 3 | 4 |
-| facts.delete > removes fact for user | server/facts/facts.test.ts | 3 | 4 |
-| facts.create > calls AI and stores fact with generic type | server/facts/facts.test.ts | 3 | 5 |
-| facts.update > updates content and Q/A; resets SRS when keep_schedule false | server/facts/facts.test.ts | 3 | 6 |
+| facts.list > returns facts for user newest first | server/facts/facts.test.ts | 4 | 5 |
+| facts.delete > removes fact for user | server/facts/facts.test.ts | 4 | 5 |
+| facts.create > calls AI and stores fact with generic type | server/facts/facts.test.ts | 4 | 6 |
+| facts.update > updates content and Q/A; resets SRS when keep_schedule false | server/facts/facts.test.ts | 4 | 7 |
 
 ## Dependency Graph
 
@@ -168,19 +184,20 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 - Patch 1 [INFRA] -> []
 - Patch 2 [INFRA] -> [1]
 - Patch 3 [INFRA] -> [2]
-- Patch 4 [BEHAVIOR] -> [2, 3]
-- Patch 5 [BEHAVIOR] -> [2, 3, 4]
-- Patch 6 [BEHAVIOR] -> [2, 3, 4]
-- Patch 7 [BEHAVIOR] -> [4, 5]
-- Patch 8 [BEHAVIOR] -> [4, 6]
+- Patch 4 [INFRA] -> [3]
+- Patch 5 [BEHAVIOR] -> [3, 4]
+- Patch 6 [BEHAVIOR] -> [3, 4, 5]
+- Patch 7 [BEHAVIOR] -> [3, 4, 5]
+- Patch 8 [BEHAVIOR] -> [5, 6]
+- Patch 9 [BEHAVIOR] -> [5, 7]
 ```
 
-**Mergability insight**: 3 of 8 patches are INFRA; behavior patches are small (list/delete, create, update, then UI).
+**Mergability insight**: 4 of 9 patches are INFRA (oRPC migration, schema, types, test stubs); behavior patches are small (list/delete, create, update, then UI).
 
 ## Mergability Checklist
 
 - [ ] Feature flag strategy documented (optional; can omit).
-- [ ] Early patches schema and types only.
-- [ ] Test stubs in Patch 3; implementations in 4, 5, 6.
+- [ ] Early patches: oRPC migration, then schema and types.
+- [ ] Test stubs in Patch 4; implementations in 5, 6, 7.
 - [ ] Test Map complete.
 - [ ] BEHAVIOR patches justified (API and UI required for DoD).
