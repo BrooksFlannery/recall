@@ -10,9 +10,9 @@ vi.mock("@/server/auth", () => ({
 }))
 
 import { auth } from "@/server/auth"
-import { middleware } from "./middleware"
+import { proxy } from "./proxy"
 
-describe("Middleware", () => {
+describe("Proxy", () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -22,7 +22,7 @@ describe("Middleware", () => {
     vi.mocked(auth.api.getSession).mockResolvedValue(null)
 
     const request = new NextRequest("http://localhost:3000/app/dashboard")
-    const response = await middleware(request)
+    const response = await proxy(request)
 
     expect(response.status).toBe(307)
     expect(response.headers.get("location")).toBe("http://localhost:3000/sign-in")
@@ -35,14 +35,14 @@ describe("Middleware", () => {
     } as never)
 
     const request = new NextRequest("http://localhost:3000/app/dashboard")
-    const response = await middleware(request)
+    const response = await proxy(request)
 
     expect(response.status).toBe(200)
   })
 
   it("allows public paths without authentication", async () => {
     const request = new NextRequest("http://localhost:3000/sign-in")
-    const response = await middleware(request)
+    const response = await proxy(request)
 
     expect(response.status).toBe(200)
     expect(auth.api.getSession).not.toHaveBeenCalled()
@@ -50,7 +50,7 @@ describe("Middleware", () => {
 
   it("allows the landing page without authentication", async () => {
     const request = new NextRequest("http://localhost:3000/")
-    const response = await middleware(request)
+    const response = await proxy(request)
 
     expect(response.status).toBe(200)
     expect(auth.api.getSession).not.toHaveBeenCalled()
@@ -58,7 +58,7 @@ describe("Middleware", () => {
 
   it("allows Better Auth API routes without authentication", async () => {
     const request = new NextRequest("http://localhost:3000/api/auth/callback/google")
-    const response = await middleware(request)
+    const response = await proxy(request)
 
     expect(response.status).toBe(200)
     expect(auth.api.getSession).not.toHaveBeenCalled()
