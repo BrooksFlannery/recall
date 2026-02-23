@@ -27,7 +27,17 @@
   },
   "plugins": [
     "./plugins/no-zod-native-enum.grit",
-    "./plugins/no-dynamic-imports-in-tests.grit",
+    {
+      "path": "./plugins/no-dynamic-imports-in-tests.grit",
+      "includes": [
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        "**/*.spec.ts",
+        "**/*.spec.tsx",
+        "!lib/session.test.ts",
+        "!proxy.test.ts"
+      ]
+    },
     "./plugins/no-iife.grit",
     "./plugins/no-toBeDefined-or-toBeTruthy-in-tests.grit",
     "./plugins/no-spyOn-in-tests.grit",

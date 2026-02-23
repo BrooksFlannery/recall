@@ -1,0 +1,20 @@
+# docker-compose.test.yml
+#
+# LOCAL DEVELOPMENT ONLY — uses ephemeral port (0:5432) so multiple worktrees
+# can run test:setup at once and so test DB doesn't conflict with dev Postgres.
+# CI uses GitHub Actions services (fixed port in workflow) instead.
+#
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+      POSTGRES_DB: test_db
+    ports:
+      - "0:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      interval: 1s
+      timeout: 5s
+      retries: 5

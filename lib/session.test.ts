@@ -1,33 +1,25 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
+import { beforeAll, beforeEach, describe, expect, it, mock } from "bun:test"
 
-vi.mock("next/headers", () => ({
-  headers: vi.fn(),
-}))
+const headersMock = mock((): unknown => undefined)
+const getSessionMock = mock((): unknown => undefined)
+mock.module("next/headers", () => ({ headers: headersMock }))
+mock.module("@/server/auth", () => ({ auth: { api: { getSession: getSessionMock } } }))
 
-vi.mock("@/server/auth", () => ({
-  auth: {
-    api: {
-      getSession: vi.fn(),
-    },
-  },
-}))
-
-import { auth } from "@/server/auth"
-import { headers } from "next/headers"
-import { getSession } from "./session"
+let getSession: () => Promise<unknown>
+beforeAll(async () => {
+  // Mocks must be registered before the module under test is loaded
+  const mod = await import("./session")
+  getSession = mod.getSession
+})
 
 describe("Session helper", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mock.clearAllMocks()
   })
 
   it("returns session when cookie present", async () => {
-    // When the auth cookie is present in the request headers, getSession should
-    // return the session object (delegating to auth.api.getSession).
     const mockHeaders = new Headers({ cookie: "better-auth.session_token=test-token" })
-    vi.mocked(headers).mockResolvedValue(
-      mockHeaders as ReturnType<typeof headers> extends Promise<infer T> ? T : never,
-    )
+    headersMock.mockResolvedValue(mockHeaders as Awaited<ReturnType<typeof headersMock>>)
 
     const mockSession = {
       session: {
@@ -50,11 +42,11 @@ describe("Session helper", () => {
         updatedAt: new Date(),
       },
     }
-    vi.mocked(auth.api.getSession).mockResolvedValue(mockSession as never)
+    getSessionMock.mockResolvedValue(mockSession as never)
 
     const result = await getSession()
 
     expect(result).toEqual(mockSession)
-    expect(auth.api.getSession).toHaveBeenCalledWith({ headers: mockHeaders })
+    expect(getSessionMock).toHaveBeenCalledWith({ headers: mockHeaders })
   })
 })
