@@ -1,4 +1,8 @@
-import { boolean, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+import { boolean, integer, pgEnum, pgTable, text, timestamp } from "drizzle-orm/pg-core"
+
+// Represents the semantic type of a fact. Currently only "generic" is assigned;
+// future values may include things like "definition", "relationship", "procedure", "list", etc.
+export const factTypeEnum = pgEnum("fact_type", ["generic"])
 
 export const user = pgTable("user", {
   id: text("id").primaryKey(),
@@ -39,6 +43,32 @@ export const account = pgTable("account", {
   password: text("password"),
   createdAt: timestamp("created_at").notNull(),
   updatedAt: timestamp("updated_at").notNull(),
+})
+
+export const facts = pgTable("facts", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => user.id, { onDelete: "cascade" }),
+  userContent: text("user_content").notNull(),
+  type: factTypeEnum("type").notNull().default("generic"),
+  srsLevel: integer("srs_level").notNull().default(0),
+  nextScheduledAt: timestamp("next_scheduled_at").notNull(),
+  createdAt: timestamp("created_at").notNull(),
+  updatedAt: timestamp("updated_at").notNull(),
+})
+
+// Each row is one AI-generated Q/A pair for a fact. A new row is inserted on every
+// create or edit; the current item is always the latest by created_at.
+// Future quiz-event fields (e.g. user_answer, is_correct, reviewed_at) will be added here.
+export const factItems = pgTable("fact_items", {
+  id: text("id").primaryKey(),
+  factId: text("fact_id")
+    .notNull()
+    .references(() => facts.id, { onDelete: "cascade" }),
+  question: text("question").notNull(),
+  canonicalAnswer: text("canonical_answer").notNull(),
+  createdAt: timestamp("created_at").notNull(),
 })
 
 export const verification = pgTable("verification", {
