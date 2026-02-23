@@ -1,23 +1,12 @@
 import { z } from "zod"
 import { protectedProcedure } from "../orpc"
-import { createTableSchemas } from "@/lib/utils/table-schemas"
 import { facts, factItems } from "@/server/db/schema"
 import { db } from "@/server/db"
 import { eq, desc, and, inArray } from "drizzle-orm"
 import { ORPCError } from "@orpc/server"
-
-/**
- * Schemas derived from the `facts` table.
- *
- * - `system`     — DB-generated fields visible to clients but never written.
- * - `serverOnly` — Fields owned by server business logic, hidden from clients.
- * - `createOnly` — `type` is set once on creation and cannot be changed.
- */
-const factsSchemas = createTableSchemas(facts, {
-  system: ["id", "createdAt", "updatedAt"],
-  clientHidden: ["userId", "srsLevel", "nextScheduledAt"],
-  createOnly: ["type"],
-})
+import { Effect } from "effect"
+import { AIService } from "@/lib/ai/types"
+import { OpenAIAIServiceLayer } from "@/lib/ai/openai-ai.service"
 
 /**
  * The shape returned by `facts.list`, `facts.create`, and `facts.update`.
@@ -103,22 +92,73 @@ export const factsRouter = {
   /**
    * Accepts user-supplied text, calls the AI service to generate a question
    * and canonical answer, then persists the fact and its first `fact_items` row.
+   *
+   * Note: input schema is defined explicitly (instead of `factsSchemas.clientCreate`) for the same
+   * Zod 4 type inference reason as `FactWithLatestItemSchema` — the as-any omit loses field types.
    */
   create: protectedProcedure
-    .input(factsSchemas.clientCreate)
+    .input(z.object({ userContent: z.string() }))
     .output(FactWithLatestItemSchema)
-    .handler(() => {
-      throw new ORPCError("NOT_IMPLEMENTED")
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id
+      const now = new Date()
+
+      const { question, canonicalAnswer } = await Effect.runPromise(
+        Effect.provide(
+          Effect.gen(function* () {
+            const ai = yield* AIService
+            return yield* ai.generateQuestionAnswer(input.userContent)
+          }),
+          OpenAIAIServiceLayer,
+        ),
+      )
+
+      const factId = crypto.randomUUID()
+      const factItemId = crypto.randomUUID()
+      const nextScheduledAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+
+      await db.insert(facts).values({
+        id: factId,
+        userId,
+        userContent: input.userContent,
+        type: "generic",
+        srsLevel: 0,
+        nextScheduledAt,
+        createdAt: now,
+        updatedAt: now,
+      })
+
+      await db.insert(factItems).values({
+        id: factItemId,
+        factId,
+        question,
+        canonicalAnswer,
+        createdAt: now,
+      })
+
+      return {
+        id: factId,
+        userContent: input.userContent,
+        type: "generic" as const,
+        createdAt: now,
+        updatedAt: now,
+        latestFactItem: { id: factItemId, question, canonicalAnswer, createdAt: now },
+      }
     }),
 
   /**
    * Re-generates the question/answer for new user content and inserts a new
    * `fact_items` row (preserving history). When `keepSchedule` is false the
    * SRS schedule is reset to level 0 (next review in 1 day).
+   *
+   * Note: input schema is defined explicitly (instead of `factsSchemas.clientUpdate.extend(...)`)
+   * for the same Zod 4 type inference reason as `FactWithLatestItemSchema`.
    */
   update: protectedProcedure
     .input(
-      factsSchemas.clientUpdate.extend({
+      z.object({
+        id: z.string(),
+        userContent: z.string().optional(),
         /** When false, resets the SRS schedule to level 0 (next review in 1 day). */
         keepSchedule: z.boolean(),
       }),
