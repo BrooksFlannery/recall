@@ -164,14 +164,54 @@ describe("facts.create", () => {
 })
 
 describe("facts.update", () => {
-  it.skip("updates content and Q/A; resets SRS when keep_schedule false", async () => {
-    // Setup: seed an existing fact with srsLevel > 0 and a fact_items row;
-    // mock the AI service to return new question and canonicalAnswer for the
-    // updated userContent
-    //
-    // Expectation: update changes the fact's userContent; inserts a new
-    // fact_items row with the fresh AI-generated Q/A (preserving history);
-    // when keepSchedule is false, srsLevel is reset to 0 and nextScheduledAt
-    // is set to approximately now + 1 day
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("updates content and Q/A; resets SRS when keep_schedule false", async () => {
+    const now = new Date()
+    const updatedFact = {
+      id: "f1",
+      userId: "user-1",
+      userContent: "Updated content",
+      type: "generic" as const,
+      srsLevel: 0,
+      nextScheduledAt: new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      createdAt: now,
+      updatedAt: now,
+    }
+
+    const insertChain = { values: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(db.insert).mockReturnValue(insertChain as never)
+
+    const updateChain = {
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([updatedFact]),
+    }
+    vi.mocked(db.update).mockReturnValue(updateChain as never)
+
+    const result = await client.update({
+      id: "f1",
+      userContent: "Updated content",
+      keepSchedule: false,
+    })
+
+    // New fact_items row inserted with AI-generated Q/A
+    expect(db.insert).toHaveBeenCalledOnce()
+    expect(insertChain.values).toHaveBeenCalledOnce()
+
+    // Fact updated with new content
+    expect(db.update).toHaveBeenCalledOnce()
+    const setArg = vi.mocked(updateChain.set).mock.calls[0]?.[0] as Record<string, unknown>
+
+    // keepSchedule false → SRS reset to 0 and nextScheduledAt advanced
+    expect(setArg?.["srsLevel"]).toBe(0)
+    expect(setArg?.["nextScheduledAt"]).toBeInstanceOf(Date)
+
+    // Returned fact reflects the updated state
+    expect(result.id).toBe("f1")
+    expect(result.userContent).toBe("Updated content")
+    expect(result.latestFactItem?.question).toContain("Updated content".slice(0, 50))
   })
 })
