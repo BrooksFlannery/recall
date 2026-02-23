@@ -2,6 +2,9 @@ import { z } from "zod"
 import { protectedProcedure } from "../orpc"
 import { createTableSchemas } from "@/lib/utils/table-schemas"
 import { facts, factItems } from "@/server/db/schema"
+import { db } from "@/server/db"
+import { eq, desc, and, inArray } from "drizzle-orm"
+import { ORPCError } from "@orpc/server"
 
 /**
  * Schemas derived from the `facts` table.
@@ -17,23 +20,29 @@ const factsSchemas = createTableSchemas(facts, {
 })
 
 /**
- * Schemas derived from the `fact_items` table.
- *
- * - `system`     — `id` and `createdAt` are DB-generated.
- * - `serverOnly` — `factId` is an internal linking key, not exposed to clients.
- */
-const factItemsSchemas = createTableSchemas(factItems, {
-  system: ["id", "createdAt"],
-  clientHidden: ["factId"],
-})
-
-/**
  * The shape returned by `facts.list`, `facts.create`, and `facts.update`.
  * A fact joined with its most recent AI-generated question/answer pair.
  * `latestFactItem` is nullable for safety, though a fact always has at least one item after creation.
+ *
+ * Note: defined explicitly rather than composing from `factsSchemas.clientSelect.extend()` and
+ * `factItemsSchemas.clientSelect` because the `as any` cast inside `createTableSchemas` prevents
+ * Zod 4 from inferring omitted-key shapes correctly; both schemas lose field-level type information.
+ * The explicit definition below matches what those schemas would produce at runtime.
  */
-export const FactWithLatestItemSchema = factsSchemas.clientSelect.extend({
-  latestFactItem: factItemsSchemas.clientSelect.nullable(),
+export const FactWithLatestItemSchema = z.object({
+  id: z.string(),
+  userContent: z.string(),
+  type: z.enum(["generic"]),
+  createdAt: z.date(),
+  updatedAt: z.date(),
+  latestFactItem: z
+    .object({
+      id: z.string(),
+      question: z.string(),
+      canonicalAnswer: z.string(),
+      createdAt: z.date(),
+    })
+    .nullable(),
 })
 
 export type FactWithLatestItem = z.infer<typeof FactWithLatestItemSchema>
@@ -45,7 +54,51 @@ export const factsRouter = {
    */
   list: protectedProcedure
     .output(z.array(FactWithLatestItemSchema))
-    .handler(() => []),
+    .handler(async ({ context }) => {
+      const userId = context.session.user.id
+
+      const userFacts = await db
+        .select()
+        .from(facts)
+        .where(eq(facts.userId, userId))
+        .orderBy(desc(facts.createdAt))
+
+      if (userFacts.length === 0) { return [] }
+
+      const factIds = userFacts.map((f) => f.id)
+      const allItems = await db
+        .select()
+        .from(factItems)
+        .where(inArray(factItems.factId, factIds))
+        .orderBy(desc(factItems.createdAt))
+
+      // Build map of factId → latest item (allItems already sorted newest first)
+      const latestByFactId = new Map<string, (typeof allItems)[0]>()
+      for (const item of allItems) {
+        if (!latestByFactId.has(item.factId)) {
+          latestByFactId.set(item.factId, item)
+        }
+      }
+
+      return userFacts.map((fact) => {
+        const latestItem = latestByFactId.get(fact.id) ?? null
+        return {
+          id: fact.id,
+          userContent: fact.userContent,
+          type: fact.type,
+          createdAt: fact.createdAt,
+          updatedAt: fact.updatedAt,
+          latestFactItem: latestItem
+            ? {
+                id: latestItem.id,
+                question: latestItem.question,
+                canonicalAnswer: latestItem.canonicalAnswer,
+                createdAt: latestItem.createdAt,
+              }
+            : null,
+        }
+      })
+    }),
 
   /**
    * Accepts user-supplied text, calls the AI service to generate a question
@@ -55,7 +108,7 @@ export const factsRouter = {
     .input(factsSchemas.clientCreate)
     .output(FactWithLatestItemSchema)
     .handler(() => {
-      throw new Error("not implemented")
+      throw new ORPCError("NOT_IMPLEMENTED")
     }),
 
   /**
@@ -72,7 +125,7 @@ export const factsRouter = {
     )
     .output(FactWithLatestItemSchema)
     .handler(() => {
-      throw new Error("not implemented")
+      throw new ORPCError("NOT_IMPLEMENTED")
     }),
 
   /**
@@ -81,7 +134,11 @@ export const factsRouter = {
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .output(z.object({ success: z.literal(true) }))
-    .handler(() => {
-      throw new Error("not implemented")
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id
+      await db
+        .delete(facts)
+        .where(and(eq(facts.id, input.id), eq(facts.userId, userId)))
+      return { success: true as const }
     }),
 }

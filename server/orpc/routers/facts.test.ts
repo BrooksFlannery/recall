@@ -1,23 +1,127 @@
-import { describe, it } from "vitest"
+import { describe, it, expect, vi, beforeEach } from "vitest"
+import { createRouterClient } from "@orpc/server"
+
+vi.mock("@/server/db", () => ({
+  db: {
+    select: vi.fn(),
+    delete: vi.fn(),
+    insert: vi.fn(),
+    update: vi.fn(),
+  },
+}))
+
+import { db } from "@/server/db"
+import { factsRouter } from "./facts"
+
+const mockSession = {
+  session: {
+    id: "s1",
+    userId: "user-1",
+    token: "tok",
+    expiresAt: new Date(),
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ipAddress: null,
+    userAgent: null,
+  },
+  user: {
+    id: "user-1",
+    email: "test@example.com",
+    name: "Test User",
+    emailVerified: true,
+    image: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+}
+
+const client = createRouterClient(factsRouter, {
+  context: { session: mockSession as never },
+})
 
 describe("facts.list", () => {
-  it.skip("returns facts for user newest first", async () => {
-    // Setup: seed two facts for the same user with different createdAt timestamps
-    // (older fact inserted first, newer fact inserted second)
-    //
-    // Expectation: list returns both facts ordered by createdAt desc —
-    // the newer fact appears at index 0 and the older at index 1;
-    // each fact is joined with its latest fact_items row
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("returns facts for user newest first", async () => {
+    const now = new Date()
+    const older = new Date(now.getTime() - 60_000)
+
+    const newerFact = {
+      id: "f2",
+      userId: "user-1",
+      userContent: "Newer fact",
+      type: "generic" as const,
+      srsLevel: 0,
+      nextScheduledAt: now,
+      createdAt: now,
+      updatedAt: now,
+    }
+    const olderFact = {
+      id: "f1",
+      userId: "user-1",
+      userContent: "Older fact",
+      type: "generic" as const,
+      srsLevel: 0,
+      nextScheduledAt: older,
+      createdAt: older,
+      updatedAt: older,
+    }
+    const newerItem = {
+      id: "fi2",
+      factId: "f2",
+      question: "Q for newer",
+      canonicalAnswer: "A for newer",
+      createdAt: now,
+    }
+    const olderItem = {
+      id: "fi1",
+      factId: "f1",
+      question: "Q for older",
+      canonicalAnswer: "A for older",
+      createdAt: older,
+    }
+
+    // First select() call fetches facts; second fetches factItems
+    const factsChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([newerFact, olderFact]),
+    }
+    const itemsChain = {
+      from: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      orderBy: vi.fn().mockResolvedValue([newerItem, olderItem]),
+    }
+    vi.mocked(db.select)
+      .mockReturnValueOnce(factsChain as never)
+      .mockReturnValueOnce(itemsChain as never)
+
+    const result = await client.list()
+
+    expect(result).toHaveLength(2)
+    expect(result[0]?.id).toBe("f2") // newer first
+    expect(result[1]?.id).toBe("f1")
+    expect(result[0]?.latestFactItem?.id).toBe("fi2")
+    expect(result[1]?.latestFactItem?.id).toBe("fi1")
   })
 })
 
 describe("facts.delete", () => {
-  it.skip("removes fact for user", async () => {
-    // Setup: seed a fact (and its associated fact_items row) for a user
-    //
-    // Expectation: calling delete with the fact's id returns { success: true }
-    // and the fact no longer exists in the database;
-    // cascading delete also removes all associated fact_items rows
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("removes fact for user", async () => {
+    const deleteChain = { where: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(db.delete).mockReturnValue(deleteChain as never)
+
+    const result = await client.delete({ id: "f1" })
+
+    expect(result).toEqual({ success: true })
+    expect(db.delete).toHaveBeenCalledOnce()
+    expect(deleteChain.where).toHaveBeenCalledOnce()
   })
 })
 
