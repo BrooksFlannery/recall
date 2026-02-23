@@ -28,20 +28,22 @@ function toOmitMask(keys: string[]): Record<string, true> {
  *   to the client — not in responses, not in requests. Typically populated
  *   from the auth session or internal algorithms.
  *
- * - **`createOnly`** — Columns the client may supply when creating a record
- *   but that are locked after creation (e.g. `type`). Omitted from update
- *   request schemas.
+ * - **`createOnly`** — Immutable after creation for **both** server and client.
+ *   Can be set when the record is first inserted, but must not be changed
+ *   afterwards. Omitted from all update schemas (e.g. `type`).
  *
  * ---
  *
  * ### Generated schemas
  *
- * | Schema          | Includes                                    | Typical use          |
- * |-----------------|---------------------------------------------|----------------------|
- * | `select`        | All columns                                 | Server reads from DB |
- * | `clientSelect`  | All except `serverOnly`                     | API response bodies  |
- * | `clientCreate`  | All except `system` + `serverOnly`          | POST request bodies  |
- * | `clientUpdate`  | All except `system` + `serverOnly` + `createOnly`, all partial, `id` required | PATCH request bodies |
+ * | Schema          | Includes                                                                       | Typical use               |
+ * |-----------------|--------------------------------------------------------------------------------|---------------------------|
+ * | `select`        | All columns                                                                    | Server reads from DB      |
+ * | `clientSelect`  | All except `serverOnly`                                                        | API response bodies       |
+ * | `clientCreate`  | All except `system` + `serverOnly`                                             | Client POST request bodies |
+ * | `clientUpdate`  | All except `system` + `serverOnly` + `createOnly`, all partial, `id` required | Client PATCH request bodies |
+ * | `serverCreate`  | All except `system`                                                            | Server INSERT bodies      |
+ * | `serverUpdate`  | All except `system` + `createOnly`, all partial, `id` required                | Server UPDATE bodies      |
  *
  * ---
  *
@@ -85,8 +87,8 @@ export function createTableSchemas<
      */
     serverOnly: TCol[]
     /**
-     * Client-settable on creation but immutable afterwards.
-     * Omitted from update request schemas.
+     * Immutable after creation for both server and client.
+     * Can be set on first insert; omitted from all update schemas.
      * @example ['type']
      */
     createOnly?: TCol[]
@@ -122,12 +124,32 @@ export function createTableSchemas<
   /**
    * Mutable columns only (excludes `system`, `serverOnly`, and `createOnly`),
    * all fields partial, with `id` required to identify the record.
-   * Used to validate PATCH / update request bodies.
+   * Used to validate client PATCH / update request bodies.
    */
   const clientUpdate = createUpdateSchema(table)
     // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
     .omit({ ...systemMask, ...serverOnlyMask, ...createOnlyMask } as any)
     .extend({ id: z.string() })
 
-  return { select, clientSelect, clientCreate, clientUpdate }
+  /**
+   * All writable columns except `system` (includes `serverOnly` and `createOnly`).
+   * Fields with DB defaults are optional; all others are required.
+   * Used to validate server-side INSERT operations.
+   */
+  const serverCreate = createInsertSchema(table).omit(
+    // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
+    systemMask as any,
+  )
+
+  /**
+   * All writable columns except `system` and `createOnly` (includes `serverOnly`),
+   * all fields partial, with `id` required to identify the record.
+   * Used to validate server-side UPDATE operations.
+   */
+  const serverUpdate = createUpdateSchema(table)
+    // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
+    .omit({ ...systemMask, ...createOnlyMask } as any)
+    .extend({ id: z.string() })
+
+  return { select, clientSelect, clientCreate, clientUpdate, serverCreate, serverUpdate }
 }
