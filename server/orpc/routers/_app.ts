@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { publicProcedure } from "../orpc"
+import { factsRouter } from "./facts"
 
 export const appRouter = {
   hello: publicProcedure
@@ -7,6 +8,7 @@ export const appRouter = {
     .handler(({ input }) => {
       return { greeting: `Hello ${input.name ?? "world"}!` }
     }),
+  facts: factsRouter,
 }
 
 export type AppRouter = typeof appRouter
