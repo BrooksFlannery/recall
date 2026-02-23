@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { createRouterClient } from "@orpc/server"
+import { MockAIServiceLayer } from "@/lib/ai/ai.service.mock"
 
 vi.mock("@/server/db", () => ({
   db: {
@@ -8,6 +9,11 @@ vi.mock("@/server/db", () => ({
     insert: vi.fn(),
     update: vi.fn(),
   },
+}))
+
+vi.mock("@/lib/ai/openai-ai.service", () => ({
+  // biome-ignore lint/style/useNamingConvention: must match the PascalCase export name
+  OpenAIAIServiceLayer: MockAIServiceLayer,
 }))
 
 import { db } from "@/server/db"
@@ -126,16 +132,34 @@ describe("facts.delete", () => {
 })
 
 describe("facts.create", () => {
-  it.skip("calls AI and stores fact with generic type", async () => {
-    // Setup: mock the AI service so generateQuestionAnswer returns a
-    // deterministic question and canonicalAnswer; provide an authenticated
-    // user session in the oRPC context
-    //
-    // Expectation: create calls the AI service with the supplied userContent;
-    // a facts row is inserted with type "generic" and the correct userId;
-    // a linked fact_items row is inserted containing the AI-generated
-    // question and canonicalAnswer; the returned FactWithLatestItem reflects
-    // both the new fact and its fact_item
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it("calls AI and stores fact with generic type", async () => {
+    const insertChain = { values: vi.fn().mockResolvedValue(undefined) }
+    vi.mocked(db.insert).mockReturnValue(insertChain as never)
+
+    const userContent = "The mitochondria is the powerhouse of the cell"
+    const result = await client.create({ userContent })
+
+    // AI mock returns deterministic Q/A derived from content
+    expect(result.userContent).toBe(userContent)
+    expect(result.type).toBe("generic")
+    expect(result.latestFactItem?.question).toContain(userContent.slice(0, 50))
+    expect(result.latestFactItem?.canonicalAnswer).toContain("The main topic is about")
+
+    // Both facts and fact_items rows were inserted
+    expect(db.insert).toHaveBeenCalledTimes(2)
+    expect(insertChain.values).toHaveBeenCalledTimes(2)
+
+    // First insert is for facts (check userId and type)
+    const [factsInsertCall, factItemsInsertCall] = vi.mocked(insertChain.values).mock.calls
+    expect(factsInsertCall?.[0]).toMatchObject({ userId: "user-1", type: "generic", userContent })
+    expect(factItemsInsertCall?.[0]).toMatchObject({
+      question: result.latestFactItem?.question,
+      canonicalAnswer: result.latestFactItem?.canonicalAnswer,
+    })
   })
 })
 
