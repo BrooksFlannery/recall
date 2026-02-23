@@ -9,11 +9,11 @@
 
 ## Problem Statement
 
-Users need to build and maintain a single list of facts. Each fact is one block of user text; the system must generate a question and canonical answer via the AI service, store them with the fact, and support editing (with optional SRS reset) and hard delete. The list must be flat, newest first, with no notebooks or categories.
+Users need to build and maintain a single list of facts. Each fact is one block of user text; the system must generate a question and canonical answer via the AI service, store them in a `fact_items` record linked to the fact, and support editing (with optional SRS reset) and hard delete. The list must be flat, newest first, with no notebooks or categories.
 
 ## Solution Summary
 
-Add `facts` table and oRPC procedures for list, create, update, delete. Migrate from tRPC to oRPC as the first infra step in this gameplan. List returns facts for the current user ordered by `created_at` desc. Create: accept user content, call AI service to generate question + canonical answer, store fact with type `generic`, SRS level 0, and set `next_scheduled_at`. Edit: accept new user content and “keep schedule” flag; regenerate Q/A via AI; if “keep schedule” is off, reset SRS. Delete: hard delete fact. UI: facts list page, “Add Fact” button opening a modal (text input + submit), edit modal with user content + “Keep schedule” switch + Save, delete with confirmation.
+Add `facts` and `fact_items` tables and oRPC procedures for list, create, update, delete. Migrate from tRPC to oRPC as the first infra step in this gameplan. List returns facts for the current user ordered by `created_at` desc, each joined with its latest `fact_item`. Create: accept user content, call AI service to generate question + canonical answer, insert fact and a `fact_items` row with the result. Edit: accept new user content and “keep schedule” flag; regenerate Q/A via AI; insert a new `fact_items` row (preserving history); if “keep schedule” is off, reset SRS on the fact. Delete: hard delete fact (cascades to `fact_items`). UI: facts list page, “Add Fact” button opening a modal (text input + submit), edit modal with user content + “Keep schedule” switch + Save, delete with confirmation.
 
 ## Mergability Strategy
 
@@ -37,15 +37,16 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ### 1. Database
 
-- **facts** table: id, user_id, type (enum generic|definition|relationship|procedure|list), user_content (text), generated_question (text), canonical_answer (text), srs_level (int), next_scheduled_at (timestamp), last_reviewed_at (nullable), created_at, updated_at. Default type `generic`.
+- **facts** table: id, user_id, type (enum; currently only `generic` — future values TBD), user_content (text), srs_level (int), next_scheduled_at (timestamp), created_at, updated_at. Default type `generic`.
+- **fact_items** table: id, fact_id (FK → facts, cascade delete), question (text), canonical_answer (text), created_at. Each row is one AI-generated Q/A pair. A new row is inserted on every create or edit; the current item is always the latest by `created_at`. Future quiz-event fields (e.g. user_answer, is_correct, reviewed_at) will be added here.
 
 ### 2. API (oRPC)
 
 - Procedure context includes session (e.g. from BetterAuth) so all procedures can scope by `user_id`.
-- `facts.list`: () => facts for current user, order by created_at desc.
-- `facts.create`: (input: { user_content: string }) => validate, call AIService.generateQuestionAnswer, insert fact with type generic, srs_level 0, next_scheduled_at = now + 1 day.
-- `facts.update`: (input: { id, user_content, keep_schedule: boolean }) => if !keep_schedule reset SRS (srs_level 0, next_scheduled_at = now + 1 day); call AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer (and SRS fields if reset).
-- `facts.delete`: (input: { id }) => hard delete fact for current user.
+- `facts.list`: () => facts for current user, order by created_at desc; each fact joined with its latest fact_item (by created_at).
+- `facts.create`: (input: { user_content: string }) => validate, call AIService.generateQuestionAnswer, insert fact (type generic, srs_level 0, next_scheduled_at = now + 1 day) and a fact_items row with the generated question + canonical_answer.
+- `facts.update`: (input: { id, user_content, keep_schedule: boolean }) => update fact's user_content; if !keep_schedule reset SRS (srs_level 0, next_scheduled_at = now + 1 day); call AIService.generateQuestionAnswer; insert a new fact_items row (preserves Q/A history).
+- `facts.delete`: (input: { id }) => hard delete fact for current user (cascades to fact_items).
 
 ### 3. Authorization
 
@@ -53,7 +54,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 
 ### 4. UI
 
-- Facts list page (e.g. `/app/facts`): table or list of facts (e.g. user_content preview or generated_question), newest first; “Add Fact” button; per-row Edit and Delete.
+- Facts list page (e.g. `/app/facts`): table or list of facts (e.g. user_content preview or latest fact_item's question), newest first; “Add Fact” button; per-row Edit and Delete.
 - Add Fact modal: multiline text input, Submit; on submit call create, close modal, refresh list.
 - Edit modal: prefill user_content; “Keep schedule” switch; Save; on save call update, close modal, refresh list.
 - Delete: confirm dialog then delete.
@@ -98,11 +99,11 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 ### Patch 2 [INFRA]: Facts schema and migration
 
 **Files to create/modify:**
-- `server/db/schema.ts`: facts table with all fields; fact type enum
+- `server/db/schema.ts`: facts and fact_items tables; fact type enum
 - Migration file
 
 **Changes:**
-1. Add facts table and enum; run migration.
+1. Add facts and fact_items tables and enum; run migration.
 
 ### Patch 3 [INFRA]: Facts API types and procedure signatures (oRPC)
 
@@ -137,7 +138,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 - Facts router; wire AIService Layer in app/server context
 
 **Changes:**
-1. create: get session user; call AIService.generateQuestionAnswer(user_content); insert fact with user_id, user_content, generated question/answer, type generic, srs_level 0, next_scheduled_at.
+1. create: get session user; call AIService.generateQuestionAnswer(user_content); insert fact (user_id, user_content, type generic, srs_level 0, next_scheduled_at) and a fact_items row (fact_id, question, canonical_answer).
 2. Unskip create test.
 
 ### Patch 6 [BEHAVIOR]: Implement facts.update with AI and keep_schedule
@@ -146,7 +147,7 @@ Optional: `ENABLE_FACTS_CRUD` to gate list/add/edit/delete until ready — can s
 - Facts router
 
 **Changes:**
-1. update: load fact for user; if !keep_schedule set srs_level 0, next_scheduled_at = now + 1 day; run AIService.generateQuestionAnswer; update user_content, generated_question, canonical_answer, and SRS fields.
+1. update: load fact for user; update user_content; if !keep_schedule set srs_level 0, next_scheduled_at = now + 1 day; run AIService.generateQuestionAnswer; insert new fact_items row (preserves Q/A history).
 2. Unskip update test.
 
 ### Patch 7 [BEHAVIOR]: Facts list page and Add Fact modal
