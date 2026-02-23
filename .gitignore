@@ -33,6 +33,7 @@ bun.lockb
 .env*.local
 .env.production
 .env.development
+.env.test
 
 # Debug
 npm-debug.log*

@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "vitest",
+    "test": "bash scripts/test-setup.sh && bun run test:unit && bun run test:db",
+    "test:unit": "bun test lib/ proxy.test.ts",
+    "test:setup": "bash scripts/test-setup.sh",
+    "test:teardown": "docker compose -f docker-compose.test.yml down --volumes",
+    "test:db": "bash scripts/test-setup.sh && bun test --preload ./test-db-setup.ts ./server/orpc/routers/facts.db.test.ts",
     "check": "biome check .",
     "lint": "biome lint .",
     "lint:fix": "biome lint --write .",
@@ -48,16 +52,17 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.3.14",
+    "bun-types": "1.2.14",
     "@tailwindcss/postcss": "4.1.18",
     "@types/node": "25.2.0",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "autoprefixer": "10.4.24",
     "drizzle-kit": "0.31.8",
+    "nanoid": "5.1.6",
     "postcss": "8.5.6",
     "tailwindcss": "4.1.18",
-    "typescript": "5.9.3",
-    "vitest": "3.0.7"
+    "typescript": "5.9.3"
   },
   "engines": {
     "bun": ">=1.0.0"

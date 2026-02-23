@@ -1,7 +1,9 @@
+import { and, desc, eq, inArray } from "drizzle-orm"
 import { z } from "zod"
-import { protectedProcedure } from "../orpc"
 import { createTableSchemas } from "@/lib/utils/table-schemas"
-import { facts, factItems } from "@/server/db/schema"
+import { db } from "@/server/db"
+import { factItems, facts } from "@/server/db/schema"
+import { protectedProcedure } from "../orpc"
 
 /**
  * Schemas derived from the `facts` table.
@@ -45,7 +47,47 @@ export const factsRouter = {
    */
   list: protectedProcedure
     .output(z.array(FactWithLatestItemSchema))
-    .handler(() => []),
+    .handler(async ({ context }) => {
+      const userId = context.session.user.id
+      const factsRows = await db
+        .select()
+        .from(facts)
+        .where(eq(facts.userId, userId))
+        .orderBy(desc(facts.createdAt))
+      if (factsRows.length === 0) {
+        return []
+      }
+      const factIds = factsRows.map((r) => r.id)
+      const itemsRows = await db
+        .select()
+        .from(factItems)
+        .where(inArray(factItems.factId, factIds))
+        .orderBy(desc(factItems.createdAt))
+      const latestByFactId = new Map<string, (typeof itemsRows)[number]>()
+      for (const row of itemsRows) {
+        if (!latestByFactId.has(row.factId)) {
+          latestByFactId.set(row.factId, row)
+        }
+      }
+      return factsRows.map((f) => {
+        const latest = latestByFactId.get(f.id) ?? null
+        return {
+          id: f.id,
+          userContent: f.userContent,
+          type: f.type,
+          createdAt: f.createdAt,
+          updatedAt: f.updatedAt,
+          latestFactItem: latest
+            ? {
+                id: latest.id,
+                question: latest.question,
+                canonicalAnswer: latest.canonicalAnswer,
+                createdAt: latest.createdAt,
+              }
+            : null,
+        }
+      }) as FactWithLatestItem[]
+    }),
 
   /**
    * Accepts user-supplied text, calls the AI service to generate a question
@@ -81,7 +123,11 @@ export const factsRouter = {
   delete: protectedProcedure
     .input(z.object({ id: z.string() }))
     .output(z.object({ success: z.literal(true) }))
-    .handler(() => {
-      throw new Error("not implemented")
+    .handler(async ({ context, input }) => {
+      const userId = context.session.user.id
+      await db
+        .delete(facts)
+        .where(and(eq(facts.id, input.id), eq(facts.userId, userId)))
+      return { success: true }
     }),
 }

@@ -1,0 +1,1 @@
+-- No-op migration (file was missing; journal expected it)
