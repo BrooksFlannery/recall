@@ -12,7 +12,7 @@ function toOmitMask(keys: string[]): Record<string, true> {
 
 /**
  * Classifies the columns of a Drizzle table into semantic categories and
- * derives four Zod schemas suited to different layers of the application.
+ * derives six Zod schemas suited to different layers of the application.
  *
  * ---
  *
@@ -23,36 +23,51 @@ function toOmitMask(keys: string[]): Record<string, true> {
  *   these but nobody writes them explicitly. They appear in API responses but
  *   never in request bodies.
  *
- * - **`serverOnly`** — Columns owned entirely by server business logic
+ * - **`clientHidden`** — Columns owned entirely by server business logic
  *   (e.g. `userId`, `srsLevel`, `nextScheduledAt`). They are *never* surfaced
- *   to the client — not in responses, not in requests. Typically populated
- *   from the auth session or internal algorithms.
+ *   to the client — not in responses, not in requests. The server can freely
+ *   create and update them.
  *
  * - **`createOnly`** — Immutable after creation for **both** server and client.
- *   Can be set when the record is first inserted, but must not be changed
- *   afterwards. Omitted from all update schemas (e.g. `type`).
+ *   Can be set on first insert; omitted from all update schemas (e.g. `type`
+ *   when the record's fundamental nature cannot change).
+ *
+ * - **`clientCreateOnly`** — The client may set this on creation but cannot
+ *   update it afterwards. The server retains full write access (create + update).
+ *   Useful for fields the client seeds but the server later transitions
+ *   (e.g. `status` on an order: client creates with `"pending"`, server updates
+ *   to `"processing"` / `"shipped"`).
  *
  * ---
  *
  * ### Generated schemas
  *
- * | Schema          | Includes                                                                       | Typical use               |
- * |-----------------|--------------------------------------------------------------------------------|---------------------------|
- * | `select`        | All columns                                                                    | Server reads from DB      |
- * | `clientSelect`  | All except `serverOnly`                                                        | API response bodies       |
- * | `clientCreate`  | All except `system` + `serverOnly`                                             | Client POST request bodies |
- * | `clientUpdate`  | All except `system` + `serverOnly` + `createOnly`, all partial, `id` required | Client PATCH request bodies |
- * | `serverCreate`  | All except `system`                                                            | Server INSERT bodies      |
- * | `serverUpdate`  | All except `system` + `createOnly`, all partial, `id` required                | Server UPDATE bodies      |
+ * |                  | client create | client update | server create | server update |
+ * |------------------|:---:|:---:|:---:|:---:|
+ * | `system`         | ✗ | ✗ | ✗ | ✗ |
+ * | `clientHidden`   | ✗ | ✗ | ✓ | ✓ |
+ * | `createOnly`     | ✓ | ✗ | ✓ | ✗ |
+ * | `clientCreateOnly` | ✓ | ✗ | ✓ | ✓ |
+ * | *(mutable)*      | ✓ | ✓ | ✓ | ✓ |
+ *
+ * | Schema            | Typical use                  |
+ * |-------------------|------------------------------|
+ * | `select`          | Server reads from DB         |
+ * | `clientSelect`    | API response bodies          |
+ * | `clientCreate`    | Client POST request bodies   |
+ * | `clientUpdate`    | Client PATCH request bodies  |
+ * | `serverCreate`    | Server INSERT bodies         |
+ * | `serverUpdate`    | Server UPDATE bodies         |
  *
  * ---
  *
  * @example
  * ```ts
  * const orderSchemas = createTableSchemas(orders, {
- *   system:     ['id', 'createdAt', 'updatedAt'],
- *   serverOnly: ['customerId', 'fraudScore'],
- *   createOnly: ['status', 'productId'],
+ *   system:           ['id', 'createdAt', 'updatedAt'],
+ *   clientHidden:     ['customerId', 'fraudScore'],
+ *   createOnly:       ['productId'],
+ *   clientCreateOnly: ['status'],  // client seeds "pending"; server transitions later
  * })
  *
  * // Compose a joined response shape
@@ -64,9 +79,9 @@ function toOmitMask(keys: string[]): Record<string, true> {
  * type Order = z.infer<typeof orderSchemas.clientSelect>
  * ```
  *
- * @param table     - The Drizzle table definition.
- * @param config    - Column category configuration. Column names are validated
- *                    at compile time against the table's column set.
+ * @param table  - The Drizzle table definition.
+ * @param config - Column category configuration. Column names are validated
+ *                 at compile time against the table's column set.
  */
 export function createTableSchemas<
   T extends Table,
@@ -82,21 +97,28 @@ export function createTableSchemas<
     system: TCol[]
     /**
      * Managed by server business logic. Completely hidden from clients —
-     * never appear in API requests or responses.
+     * never appear in API requests or responses. Server can create and update.
      * @example ['userId', 'srsLevel', 'nextScheduledAt']
      */
-    serverOnly: TCol[]
+    clientHidden: TCol[]
     /**
      * Immutable after creation for both server and client.
      * Can be set on first insert; omitted from all update schemas.
      * @example ['type']
      */
     createOnly?: TCol[]
+    /**
+     * Client may set on creation but cannot update afterwards.
+     * Server retains full create + update access.
+     * @example ['status']
+     */
+    clientCreateOnly?: TCol[]
   },
 ) {
-  const systemMask = toOmitMask(config.system)
-  const serverOnlyMask = toOmitMask(config.serverOnly)
-  const createOnlyMask = toOmitMask(config.createOnly ?? [])
+  const systemMask          = toOmitMask(config.system)
+  const clientHiddenMask    = toOmitMask(config.clientHidden)
+  const createOnlyMask      = toOmitMask(config.createOnly ?? [])
+  const clientCreateOnlyMask = toOmitMask(config.clientCreateOnly ?? [])
 
   /**
    * All columns, mirroring the raw DB row exactly.
@@ -105,35 +127,37 @@ export function createTableSchemas<
   const select = createSelectSchema(table)
 
   /**
-   * All columns except `serverOnly`.
+   * All columns except `clientHidden`.
    * Used as API response bodies — safe to send to clients.
    */
   // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
-  const clientSelect = select.omit(serverOnlyMask as any)
+  const clientSelect = select.omit(clientHiddenMask as any)
 
   /**
-   * Writable columns excluding `system` and `serverOnly`.
+   * Writable columns excluding `system` and `clientHidden`.
    * Fields with DB defaults are optional; all others are required.
-   * Used to validate POST / create request bodies.
+   * Used to validate client POST / create request bodies.
    */
   const clientCreate = createInsertSchema(table).omit(
     // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
-    { ...systemMask, ...serverOnlyMask } as any,
+    { ...systemMask, ...clientHiddenMask } as any,
   )
 
   /**
-   * Mutable columns only (excludes `system`, `serverOnly`, and `createOnly`),
-   * all fields partial, with `id` required to identify the record.
+   * Freely mutable columns only — excludes `system`, `clientHidden`,
+   * `createOnly`, and `clientCreateOnly`. All fields partial, `id` required.
    * Used to validate client PATCH / update request bodies.
    */
   const clientUpdate = createUpdateSchema(table)
-    // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
-    .omit({ ...systemMask, ...serverOnlyMask, ...createOnlyMask } as any)
+    .omit(
+      // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic
+      { ...systemMask, ...clientHiddenMask, ...createOnlyMask, ...clientCreateOnlyMask } as any,
+    )
     .extend({ id: z.string() })
 
   /**
-   * All writable columns except `system` (includes `serverOnly` and `createOnly`).
-   * Fields with DB defaults are optional; all others are required.
+   * All writable columns except `system` (includes `clientHidden`, `createOnly`,
+   * and `clientCreateOnly`). Fields with DB defaults are optional.
    * Used to validate server-side INSERT operations.
    */
   const serverCreate = createInsertSchema(table).omit(
@@ -142,9 +166,9 @@ export function createTableSchemas<
   )
 
   /**
-   * All writable columns except `system` and `createOnly` (includes `serverOnly`),
-   * all fields partial, with `id` required to identify the record.
-   * Used to validate server-side UPDATE operations.
+   * All server-writable columns except `system` and `createOnly`
+   * (includes `clientHidden` and `clientCreateOnly`). All fields partial,
+   * `id` required. Used to validate server-side UPDATE operations.
    */
   const serverUpdate = createUpdateSchema(table)
     // biome-ignore lint/suspicious/noExplicitAny: omit mask keys are validated at call site via TCol generic

@@ -12,7 +12,7 @@ import { facts, factItems } from "@/server/db/schema"
  */
 const factsSchemas = createTableSchemas(facts, {
   system: ["id", "createdAt", "updatedAt"],
-  serverOnly: ["userId", "srsLevel", "nextScheduledAt"],
+  clientHidden: ["userId", "srsLevel", "nextScheduledAt"],
   createOnly: ["type"],
 })
 
@@ -24,7 +24,7 @@ const factsSchemas = createTableSchemas(facts, {
  */
 const factItemsSchemas = createTableSchemas(factItems, {
   system: ["id", "createdAt"],
-  serverOnly: ["factId"],
+  clientHidden: ["factId"],
 })
 
 /**
