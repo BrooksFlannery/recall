@@ -164,8 +164,63 @@ export const factsRouter = {
       }),
     )
     .output(FactWithLatestItemSchema)
-    .handler(() => {
-      throw new ORPCError("NOT_IMPLEMENTED")
+    .handler(async ({ input, context }) => {
+      const userId = context.session.user.id
+      const now = new Date()
+
+      const { question, canonicalAnswer } = await Effect.runPromise(
+        Effect.provide(
+          Effect.gen(function* () {
+            const ai = yield* AIService
+            return yield* ai.generateQuestionAnswer(input.userContent ?? "")
+          }),
+          OpenAIAIServiceLayer,
+        ),
+      )
+
+      // Insert new fact_items row, preserving history
+      const factItemId = crypto.randomUUID()
+      await db.insert(factItems).values({
+        id: factItemId,
+        factId: input.id,
+        question,
+        canonicalAnswer,
+        createdAt: now,
+      })
+
+      const updateSet: {
+        updatedAt: Date
+        userContent?: string
+        srsLevel?: number
+        nextScheduledAt?: Date
+      } = { updatedAt: now }
+
+      if (input.userContent !== undefined) {
+        updateSet.userContent = input.userContent
+      }
+      if (!input.keepSchedule) {
+        updateSet.srsLevel = 0
+        updateSet.nextScheduledAt = new Date(now.getTime() + 24 * 60 * 60 * 1000)
+      }
+
+      const [updatedFact] = await db
+        .update(facts)
+        .set(updateSet)
+        .where(and(eq(facts.id, input.id), eq(facts.userId, userId)))
+        .returning()
+
+      if (!updatedFact) {
+        throw new ORPCError("NOT_FOUND")
+      }
+
+      return {
+        id: updatedFact.id,
+        userContent: updatedFact.userContent,
+        type: updatedFact.type,
+        createdAt: updatedFact.createdAt,
+        updatedAt: updatedFact.updatedAt,
+        latestFactItem: { id: factItemId, question, canonicalAnswer, createdAt: now },
+      }
     }),
 
   /**
