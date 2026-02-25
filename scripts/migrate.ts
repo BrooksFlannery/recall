@@ -1,10 +1,10 @@
 /**
- * Run Drizzle ORM migrations against the test database.
+ * Run Drizzle ORM migrations against the database.
  *
- * Usage: bun run scripts/migrate-test.ts
- * (Expects DATABASE_URL to point at test DB; use with test:setup or load .env.test first.)
+ * Usage: bun run scripts/migrate.ts
  *
- * For local: bun run test:setup loads .env.test and then runs this.
+ * Reads DATABASE_URL from the environment (pulled from Vercel in CI,
+ * or from .env.local during local development).
  */
 
 import { config } from "dotenv"
@@ -13,15 +13,17 @@ import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
 import postgres from "postgres"
 
-// Load .env.test when DATABASE_URL isn't set (test:setup exports it; CI sets it in workflow)
+// Load .env.local when DATABASE_URL is not set (CI after vercel pull, or local dev)
 if (!process.env["DATABASE_URL"]) {
-  config({ path: resolve(process.cwd(), ".env.test") })
+  config({ path: resolve(process.cwd(), ".env.local") })
 }
 
 const dbUrl = process.env["DATABASE_URL"]
 if (!dbUrl) {
   console.error(
-    "DATABASE_URL is not set. Run test:setup or ensure .env.test exists and contains DATABASE_URL."
+    "DATABASE_URL is not set.\n\n" +
+      "For local dev: add it to .env.local\n" +
+      "For CI: ensure `vercel pull` ran first to populate env vars."
   )
   process.exit(1)
 }
@@ -38,7 +40,7 @@ const db = drizzle(client)
 const migrationsFolder = resolve(process.cwd(), "drizzle")
 
 async function main() {
-  console.info("Applying migrations to test database...")
+  console.info("Applying migrations...")
   await migrate(db, { migrationsFolder })
   console.info("Migrations applied successfully.")
   process.exit(0)

@@ -28,9 +28,11 @@
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "migrations:push": "bun run scripts/migrate.ts"
   },
   "dependencies": {
+    "dotenv": "16.4.5",
     "@neondatabase/serverless": "1.0.2",
     "@orpc/client": "1.13.5",
     "@orpc/server": "1.13.5",
