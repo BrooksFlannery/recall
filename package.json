@@ -28,7 +28,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "migrations:push": "bun run scripts/migrate.ts"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.0.2",
