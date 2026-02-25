@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 # Prevent concurrent deploys from racing each other
 concurrency:
   group: deploy-${{ github.ref }}
@@ -28,13 +31,17 @@ jobs:
       # Pull env vars from Vercel (including DATABASE_URL)
       # This writes .vercel/.env.production.local (or .env.preview.local)
       - name: Pull Vercel environment variables
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
-          bunx --bun vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+          bunx --bun vercel pull --yes --environment=production --token="$VERCEL_TOKEN"
           cp .vercel/.env.production.local .env.local
 
       - name: Build project artifacts
-        run: bunx --bun vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: bunx --bun vercel build --prod --token="$VERCEL_TOKEN"
 
       # Migrations run AFTER build but BEFORE deploy.
       # If migrations fail, the deploy is aborted - no version mismatch.

@@ -7,31 +7,15 @@
  * For local: bun run test:setup loads .env.test and then runs this.
  */
 
-import { readFileSync, existsSync } from "node:fs"
+import { config } from "dotenv"
 import { resolve } from "node:path"
 import { drizzle } from "drizzle-orm/postgres-js"
 import { migrate } from "drizzle-orm/postgres-js/migrator"
 import postgres from "postgres"
 
-// Load .env.test only when DATABASE_URL isn't set (test:setup exports it; CI sets it in workflow)
-const envTestPath = resolve(process.cwd(), ".env.test")
-if (!process.env["DATABASE_URL"] && existsSync(envTestPath)) {
-  const content = readFileSync(envTestPath, "utf-8")
-  for (const line of content.split("\n")) {
-    const trimmed = line.trim()
-    if (trimmed && !trimmed.startsWith("#")) {
-      const eq = trimmed.indexOf("=")
-      if (eq > 0) {
-        const key = trimmed.slice(0, eq).trim()
-        const value = trimmed.slice(eq + 1).trim()
-        if (value.startsWith('"') && value.endsWith('"')) {
-          process.env[key] = value.slice(1, -1).replace(/\\n/g, "\n")
-        } else {
-          process.env[key] = value
-        }
-      }
-    }
-  }
+// Load .env.test when DATABASE_URL isn't set (test:setup exports it; CI sets it in workflow)
+if (!process.env["DATABASE_URL"]) {
+  config({ path: resolve(process.cwd(), ".env.test") })
 }
 
 const dbUrl = process.env["DATABASE_URL"]
@@ -51,9 +35,11 @@ const client = postgres(dbUrl, {
 
 const db = drizzle(client)
 
+const migrationsFolder = resolve(process.cwd(), "drizzle")
+
 async function main() {
   console.info("Applying migrations to test database...")
-  await migrate(db, { migrationsFolder: "drizzle" })
+  await migrate(db, { migrationsFolder })
   console.info("Migrations applied successfully.")
   process.exit(0)
 }
