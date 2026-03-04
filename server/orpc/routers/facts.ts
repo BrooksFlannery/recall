@@ -1,9 +1,14 @@
 import { and, desc, eq, inArray } from "drizzle-orm"
+import { Effect } from "effect"
+import { nanoid } from "nanoid"
 import { z } from "zod"
+import { AIService } from "@/lib/ai/types"
 import { createTableSchemas } from "@/lib/utils/table-schemas"
 import { db } from "@/server/db"
 import { factItems, facts } from "@/server/db/schema"
 import { protectedProcedure } from "../orpc"
+
+const ONE_DAY_MS = 24 * 60 * 60 * 1000
 
 /**
  * Schemas derived from the `facts` table.
@@ -96,8 +101,53 @@ export const factsRouter = {
   create: protectedProcedure
     .input(factsSchemas.clientCreate)
     .output(FactWithLatestItemSchema)
-    .handler(() => {
-      throw new Error("not implemented")
+    .handler(async ({ context, input }) => {
+      const userId = context.session.user.id
+      const userContent = input["userContent"]
+      if (typeof userContent !== "string") {
+        throw new Error("userContent is required")
+      }
+      const qa = await context.runWithAI(
+        Effect.gen(function* () {
+          const ai = yield* AIService
+          return yield* ai.generateQuestionAnswer(userContent)
+        }),
+      )
+      const now = new Date()
+      const nextScheduledAt = new Date(now.getTime() + ONE_DAY_MS)
+      const factId = nanoid()
+      const itemId = nanoid()
+      const type = input["type"] ?? "generic"
+      await db.insert(facts).values({
+        id: factId,
+        userId,
+        userContent,
+        type,
+        srsLevel: 0,
+        nextScheduledAt,
+        createdAt: now,
+        updatedAt: now,
+      })
+      await db.insert(factItems).values({
+        id: itemId,
+        factId,
+        question: qa.question,
+        canonicalAnswer: qa.canonicalAnswer,
+        createdAt: now,
+      })
+      return {
+        id: factId,
+        userContent,
+        type,
+        createdAt: now,
+        updatedAt: now,
+        latestFactItem: {
+          id: itemId,
+          question: qa.question,
+          canonicalAnswer: qa.canonicalAnswer,
+          createdAt: now,
+        },
+      } as unknown as FactWithLatestItem
     }),
 
   /**

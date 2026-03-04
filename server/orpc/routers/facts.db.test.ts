@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm"
+import { ManagedRuntime } from "effect"
 import { nanoid } from "nanoid"
 import { describe, expect, it } from "bun:test"
+import { MockAIServiceLayer } from "@/lib/ai/ai.service.mock"
 import { db } from "@/server/db"
 import { factItems, facts, user } from "@/server/db/schema"
 import { appRouter } from "./_app"
@@ -9,6 +11,8 @@ import { appRouter } from "./_app"
  * Facts procedures tested against a real Postgres database.
  * No DB mocking. Run with: bun run test:db (after bun run test:setup).
  */
+
+const testRuntime = ManagedRuntime.make(MockAIServiceLayer)
 
 function makeTestUser() {
   const id = nanoid()
@@ -21,6 +25,17 @@ function makeTestUser() {
     image: null,
     createdAt: now,
     updatedAt: now,
+  }
+}
+
+function makeContext(sessionData: {
+  session: object
+  user: ReturnType<typeof makeTestUser>
+}) {
+  return {
+    session: sessionData,
+    runWithAI: (eff: Parameters<typeof testRuntime.runPromise>[0]) =>
+      testRuntime.runPromise(eff),
   }
 }
 
@@ -78,21 +93,19 @@ describe("facts.list", () => {
     ])
 
     const list = appRouter.facts.list.callable({
-      context: {
+      context: makeContext({
         session: {
-          session: {
-            id: "s1",
-            userId: testUser.id,
-            token: "t",
-            expiresAt: now,
-            createdAt: now,
-            updatedAt: now,
-            ipAddress: null,
-            userAgent: null,
-          },
-          user: testUser,
+          id: "s1",
+          userId: testUser.id,
+          token: "t",
+          expiresAt: now,
+          createdAt: now,
+          updatedAt: now,
+          ipAddress: null,
+          userAgent: null,
         },
-      },
+        user: testUser,
+      }),
     })
     const result = await list({})
 
@@ -138,21 +151,19 @@ describe("facts.delete", () => {
     })
 
     const del = appRouter.facts.delete.callable({
-      context: {
+      context: makeContext({
         session: {
-          session: {
-            id: "s2",
-            userId: testUser.id,
-            token: "t",
-            expiresAt: now,
-            createdAt: now,
-            updatedAt: now,
-            ipAddress: null,
-            userAgent: null,
-          },
-          user: testUser,
+          id: "s2",
+          userId: testUser.id,
+          token: "t",
+          expiresAt: now,
+          createdAt: now,
+          updatedAt: now,
+          ipAddress: null,
+          userAgent: null,
         },
-      },
+        user: testUser,
+      }),
     })
     const result = await del({ id: factId })
 
@@ -162,5 +173,54 @@ describe("facts.delete", () => {
     expect(remainingFacts).toHaveLength(0)
     const remainingItems = await db.select().from(factItems).where(eq(factItems.factId, factId))
     expect(remainingItems).toHaveLength(0)
+  })
+})
+
+describe("facts.create", () => {
+  it("calls AI and stores fact with generic type and one fact_item", async () => {
+    const testUser = makeTestUser()
+    await db.insert(user).values(testUser)
+    const now = new Date()
+
+    const create = appRouter.facts.create.callable({
+      context: makeContext({
+        session: {
+          id: "s3",
+          userId: testUser.id,
+          token: "t",
+          expiresAt: now,
+          createdAt: now,
+          updatedAt: now,
+          ipAddress: null,
+          userAgent: null,
+        },
+        user: testUser,
+      }),
+    })
+
+    const userContent = "The capital of France is Paris."
+    const result = await create({ userContent })
+    // Mock AI returns deterministic Q/A; assert exact shape (satisfies lint: precise assertions)
+    const expectedQuestion = `What is the main topic of: "${userContent}"?`
+    const expectedCanonicalAnswer = `The main topic is about ${userContent.slice(0, 30)}${userContent.length > 30 ? "..." : ""}.`
+
+    expect(result.userContent).toBe(userContent)
+    expect(result.type).toBe("generic")
+    expect(result.latestFactItem?.question).toBe(expectedQuestion)
+    expect(result.latestFactItem?.canonicalAnswer).toBe(expectedCanonicalAnswer)
+
+    const factsRows = await db.select().from(facts).where(eq(facts.userId, testUser.id))
+    expect(factsRows).toHaveLength(1)
+    expect(factsRows[0]?.userContent).toBe(userContent)
+    expect(factsRows[0]?.type).toBe("generic")
+    expect(factsRows[0]?.srsLevel).toBe(0)
+
+    const itemsRows = await db
+      .select()
+      .from(factItems)
+      .where(eq(factItems.factId, result.id))
+    expect(itemsRows).toHaveLength(1)
+    expect(itemsRows[0]?.question).toBe(expectedQuestion)
+    expect(itemsRows[0]?.canonicalAnswer).toBe(expectedCanonicalAnswer)
   })
 })
